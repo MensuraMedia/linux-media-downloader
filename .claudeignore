@@ -1,0 +1,34 @@
+# Token hygiene — files Claude should not load into context by default.
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Downloaded media & user data (can be large / noisy)
+downloads/
+backups/
+data/download_history.json
+
+# AppImage build tooling & artifacts
+*.AppImage
+linuxdeploy*
+
+# Logs and backups
+*.log
+*.bak
+*.error
+
+# Editor / OS cruft
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Binary assets (referenced, not read as text)
+screenshots/
+*.png
