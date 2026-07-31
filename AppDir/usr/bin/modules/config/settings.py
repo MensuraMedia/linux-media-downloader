@@ -5,7 +5,9 @@
 import os
 
 # App settings
-SECRET_KEY = 'ytmediabackup'
+# Prefer an externally provided key; fall back to a per-run random key.
+# The app is localhost-only, but a hardcoded secret is still poor practice.
+SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
 
 # Get the system's Downloads folder path
 def get_downloads_folder():
@@ -58,6 +60,28 @@ download_thread = None
 cancel_requested = False
 window = None
 
+
+# Cancellation helpers.
+# `cancel_requested` is a module-level bool. Because other modules imported it
+# by value (`from settings import cancel_requested`), reassigning it in one
+# module never reached the others and cancellation silently did nothing.
+# Routing all access through these functions keeps a single source of truth.
+def request_cancel():
+    """Signal the active download to stop."""
+    global cancel_requested
+    cancel_requested = True
+
+
+def reset_cancel():
+    """Clear the cancel flag before starting a new download."""
+    global cancel_requested
+    cancel_requested = False
+
+
+def is_cancel_requested():
+    """Return True if the user has requested cancellation."""
+    return cancel_requested
+
 # Import JSON module for history persistence
 import json
 
@@ -89,7 +113,7 @@ def load_download_history():
         try:
             with open(HISTORY_FILE, 'r') as f:
                 download_history = json.load(f)
-        except (json.JSONDecodeError, Exception) as e:
+        except Exception as e:
             print(f"Error loading download history: {e}")
             download_history = []
     else:

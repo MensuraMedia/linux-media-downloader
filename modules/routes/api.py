@@ -3,7 +3,7 @@
 # API routes for YT Media Backup
 
 from flask import Blueprint, request, jsonify
-from modules.config.settings import current_download, default_download_path, cancel_requested
+from modules.config.settings import current_download, default_download_path, request_cancel
 from modules.download.media import get_video_info, start_download_thread
 from modules.utils.file_utils import open_folder
 
@@ -47,17 +47,17 @@ def start_download():
 @api_routes.route('/api/cancel-download', methods=['POST'])
 def cancel_download():
     """Cancel the current download process"""
-    global cancel_requested
-    cancel_requested = True
-    
+    # Signal the running download thread to stop (single source of truth).
+    request_cancel()
+
     # Update the current download status
     current_download["status"] = "cancelled"
     current_download["message"] = "Download cancelled by user"
-    
-    return jsonify({"status": "cancelled"})
-    # Add cancelled download to history with Partial status
+
+    # Record the partial download in history before returning.
+    # (Previously this block was dead code placed after the return statement.)
     from modules.config.settings import download_history, save_download_history
-    
+
     # Only add to history if we have current download info
     if current_download.get('playlist_title') or current_download.get('current_file'):
         # Create a title from playlist or current file
@@ -71,6 +71,8 @@ def cancel_download():
             'status': 'completed_with_errors'  # This will show as 'Partial'
         })
         save_download_history()
+
+    return jsonify({"status": "cancelled"})
 
 
 @api_routes.route('/api/download-status')

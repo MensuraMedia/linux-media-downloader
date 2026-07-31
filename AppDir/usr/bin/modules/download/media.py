@@ -3,12 +3,15 @@
 # Download functionality for YT Media Backup
 
 import os
-import re
 import threading
-import time
 import yt_dlp
 from modules.utils.file_utils import sanitize_filename
-from modules.config.settings import current_download, download_history, cancel_requested
+from modules.config.settings import (
+    current_download,
+    download_history,
+    reset_cancel,
+    is_cancel_requested,
+)
 
 def get_video_info(url):
     """Get information about the video or playlist"""
@@ -126,10 +129,10 @@ class DownloadProgress:
                 'progress': (downloaded_bytes / total_bytes * 100) if total_bytes else 0
             })
             
-            if cancel_requested:
+            if is_cancel_requested():
                 current_download["status"] = "cancelled"
                 current_download["message"] = "Download cancelled by user"
-                return
+                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
         
         elif d['status'] == 'finished':
             self.completed_files += 1
@@ -161,9 +164,8 @@ class DownloadProgress:
 
 def download_media(url, output_dir, download_type='audio', playlist_mode='single'):
     """Download media from YouTube"""
-    global cancel_requested
-    cancel_requested = False
-    
+    reset_cancel()
+
     current_download['status'] = 'starting'
     # Keep progress property for compatibility but we don't update it anymore
     current_download['progress'] = 0
@@ -276,7 +278,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
             ydl.add_post_processor(SanitizeFilenamePP())
             
             # Start the download
-            error_code = ydl.download([url])
+            ydl.download([url])
         
         # Final pass to sanitize all filenames in the output directory
         for filename in os.listdir(output_dir):
@@ -307,7 +309,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                 ydl.add_post_processor(SanitizeFilenamePP())
                 
                 # Try the download again
-                error_code = ydl.download([url])
+                ydl.download([url])
             
             # If status is not already set to completed by the progress hook, handle any errors
             if current_download['status'] != 'completed':
@@ -348,6 +350,11 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
         from modules.config.settings import save_download_history
         save_download_history()
         
+    except yt_dlp.utils.DownloadCancelled:
+        # User cancelled mid-download: report it as cancelled, not an error,
+        # and skip the alternative-method retry.
+        current_download['status'] = 'cancelled'
+        current_download['message'] = 'Download cancelled by user'
     except Exception as e:
         current_download['status'] = 'error'
         current_download['message'] = f'Error: {str(e)}'

@@ -3,7 +3,6 @@
 # Fallback version of the app for browser access
 
 import os
-import threading
 from flask import Flask
 
 # Import modules

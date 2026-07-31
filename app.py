@@ -2,7 +2,6 @@
 # app.py
 # Main application file for YT Media Backup
 
-import os
 import time
 import threading
 import atexit
