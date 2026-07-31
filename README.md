@@ -1,43 +1,55 @@
 # Linux Media Downloader
 
-**Linux Media Downloader** is a graphical application designed to help users easily download media content for personal, educational, or non-commercial use.
+**Linux Media Downloader** is a lightweight desktop application for downloading media
+content (currently YouTube) for personal, educational, or non-commercial use. It pairs a
+small **Flask** backend with a **PyWebView** native window, delegating all downloading to
+the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
+
+> **Repository note:** This project is maintained at
+> **[`MensuraMedia/linux-media-downloader`](https://github.com/MensuraMedia/linux-media-downloader)**.
+> It originated at `mikesdatawork/linux-media-downloader` (kept as the `upstream` remote).
+
+---
+
+## 📋 Table of Contents
+
+- [Project Status](#-project-status)
+- [Features](#-features)
+- [Screenshot](#-screenshot)
+- [Architecture](#-architecture)
+- [Project Structure](#-project-structure)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [Running the App](#-running-the-app)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Development & Testing](#-development--testing)
+- [AppImage Packaging](#-appimage-packaging-linux)
+- [Roadmap](#-roadmap)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Disclaimer](#-disclaimer)
 
 ---
 
 ## 🚧 Project Status
 
-- **In Development:** The app is functional but still evolving. Expect frequent updates and new features.
-- **Current Support:** Only YouTube downloads are supported at this time, powered by the [yt-dlp](https://github.com/yt-dlp/yt-dlp) library.
-- **Planned:** Support for additional media sources (e.g., Vimeo, SoundCloud, etc.) will be added in future releases.
-
----
-
-## 🎯 Purpose
-
-- Provide a simple, user-friendly interface for downloading media from online sources.
-- Allow users to back up or archive their favorite videos and playlists for offline, personal use.
-- Ensure compliance with non-commercial use only (see [LICENSE](LICENSE)).
+- **In Development** — functional but evolving; expect frequent updates.
+- **Current support** — YouTube videos and playlists, powered by `yt-dlp`.
+- **Planned** — additional sources (Vimeo, SoundCloud, …), richer backup/restore.
 
 ---
 
 ## ✨ Features
 
-- **YouTube Video & Playlist Download:**  
-  Download individual videos or entire playlists from YouTube.
-- **Audio or Video Mode:**  
-  Choose to download either the audio (MP3/M4A) or the full video (MP4/WebM).
-- **Progress Tracking:**  
-  Real-time status updates and progress bars for downloads.
-- **Download History:**  
-  View a list of your previous downloads.
-- **Folder Selection:**  
-  Choose your preferred download directory.
-- **Cancel Downloads:**  
-  Stop an active download at any time.
-- **Open Download Folder:**  
-  Quickly open the folder containing your downloaded files.
-- **Modern UI:**  
-  Clean, responsive interface built with Flask and PyWebView.
+- **YouTube video & playlist download** — single videos or entire playlists.
+- **Audio or video mode** — audio extracted to MP3 (192 kbps) or full video as MP4.
+- **Real-time progress** — per-file and overall playlist progress, speed, and ETA.
+- **Cancel in progress** — abort an active download cleanly at any time.
+- **Download history** — the last 100 downloads persisted to `data/download_history.json`.
+- **Folder selection & open** — choose a download directory and open it in your file manager.
+- **Filename sanitization** — output names are normalized (alphanumeric + underscores).
+- **Two ways to run** — native desktop window *or* an ordinary web browser.
 
 ---
 
@@ -47,76 +59,215 @@
 
 ---
 
-## 🖱️ Application Buttons & UI Elements
+## 🏗️ Architecture
 
-- **URL Input:**  
-  Enter the YouTube video or playlist URL.
-- **Download Type Selector:**  
-  Choose between "Audio" or "Video" download.
-- **Playlist Mode:**  
-  Select "Single" (just the video) or "Playlist" (all videos in the playlist).
-- **Download Button:**  
-  Starts the download process.
-- **Cancel Button:**  
-  Cancels the current download.
-- **Open Folder Button:**  
-  Opens the download directory in your file manager.
-- **History Tab:**  
-  View your download history.
-- **Backups Tab:**  
-  (Planned) Manage and restore media backups.
-- **About/Information:**  
-  Learn more about the app and its usage.
+| Layer | Technology | Responsibility |
+|-------|-----------|----------------|
+| Native shell | **PyWebView** (`app.py`) | Renders the UI in a desktop window |
+| Browser fallback | **Flask** dev server (`browser_app.py`) | Same UI at `http://127.0.0.1:5000` |
+| Web server | **Flask** blueprints | Serves UI pages and a JSON API |
+| Download engine | **yt-dlp** | Extraction, download, audio post-processing |
+
+Shared runtime state (the current download and the history list) lives as module-level
+singletons in `modules/config/settings.py`. Because these are **mutable and imported by
+reference**, mutation is visible across modules. Scalar flags (such as the cancellation
+flag) are accessed **only** through accessor functions — `request_cancel()`,
+`reset_cancel()`, and `is_cancel_requested()` — so a signal from the API thread is reliably
+seen by the download worker thread.
+
+### Request flow
+
+```
+Browser / WebView  ──HTTP──▶  Flask (api.py, ui.py)
+                                  │
+                                  ▼
+                      start_download_thread()  ──▶  worker thread
+                                  │                     │
+                                  ▼                     ▼
+                          current_download  ◀──  yt-dlp + progress_hook
+                          (polled via /api/download-status)
+```
+
+---
+
+## 📁 Project Structure
+
+```
+linux-media-downloader/
+├── app.py                     # Entry point: native PyWebView window
+├── browser_app.py             # Entry point: browser fallback (Flask :5000)
+├── requirements.txt           # Runtime dependencies
+├── requirements-dev.txt       # Dev/test dependencies (pytest, pyflakes)
+├── modules/
+│   ├── config/settings.py     # Config, shared state, history, cancel helpers
+│   ├── download/media.py      # yt-dlp orchestration, progress hook, worker thread
+│   ├── routes/api.py          # JSON API blueprint (/api/*)
+│   ├── routes/ui.py           # Page-rendering blueprint (/, /backups, …)
+│   └── utils/file_utils.py    # Filename sanitization, open-folder
+├── templates/                 # Jinja2 HTML templates
+├── static/                    # CSS and JS assets
+├── data/download_history.json # Persisted history (last 100)
+├── tests/test_app.py          # Offline unit + route tests
+└── AppDir/                    # AppImage packaging staging tree
+```
 
 ---
 
 ## ⚙️ Requirements
 
-- Python 3.8+
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
-- Flask
-- pywebview
+- **Python 3.8+**
+- [`yt-dlp`](https://github.com/yt-dlp/yt-dlp)
+- [`Flask`](https://flask.palletsprojects.com/)
+- [`pywebview`](https://pywebview.flowrl.com/) *(native window only)*
+- [`ffmpeg`](https://ffmpeg.org/) on your `PATH` *(required for audio extraction / merging)*
 
-(See `requirements.txt` for a full list.)
+> The native window (`app.py`) needs a graphical display and a PyWebView backend
+> (GTK/Qt/WebKit). On a headless machine, use the browser fallback (`browser_app.py`).
+
+---
+
+## 📦 Installation
+
+```bash
+git clone https://github.com/MensuraMedia/linux-media-downloader.git
+cd linux-media-downloader
+
+python3 -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+
+pip install -r requirements.txt   # runtime only
+# or, for development:
+pip install -r requirements-dev.txt
+```
+
+Install `ffmpeg` via your system package manager, e.g.:
+
+```bash
+sudo apt install ffmpeg           # Debian/Ubuntu/Mint
+```
+
+---
+
+## ▶️ Running the App
+
+**Native desktop window:**
+
+```bash
+python3 app.py
+```
+
+**Browser mode** (no GUI toolkit required — good for servers/headless):
+
+```bash
+python3 browser_app.py
+# then open http://127.0.0.1:5000
+```
+
+Flask binds only to `127.0.0.1` (localhost); the app is not exposed to your network.
+
+---
+
+## 🖱️ Usage
+
+1. Paste a YouTube **video or playlist URL**.
+2. Choose **Audio** (MP3) or **Video** (MP4).
+3. Choose **Single** (just the video) or **Playlist** (all videos).
+4. Pick a **download folder** (defaults to your XDG Downloads directory).
+5. Click **Download** — watch live progress; **Cancel** stops it cleanly.
+6. Use **Open Folder** to reveal your files, and the **Backups/History** tab to review
+   past downloads.
+
+### JSON API
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/check-url` | Detect whether a URL is a single video or a playlist |
+| `GET`  | `/api/get-default-path` | Return the default download directory |
+| `POST` | `/api/download` | Start a download in a background thread |
+| `POST` | `/api/cancel-download` | Signal the active download to stop |
+| `GET`  | `/api/download-status` | Poll current download status/progress |
+| `POST` | `/api/open-folder` | Open a folder in the system file manager |
+
+---
+
+## 🔧 Configuration
+
+| Setting | How | Default |
+|---------|-----|---------|
+| Flask secret key | `SECRET_KEY` env var | random per run (`os.urandom`) |
+| Download folder | Selected in UI / `output_dir` in `/api/download` | XDG Downloads → `~/Downloads` → `./downloads` |
+| History file | `data/download_history.json` | last 100 entries |
+| Audio codec/quality | `modules/download/media.py` | MP3 @ 192 kbps |
+
+```bash
+# Optional: pin a stable secret key
+export SECRET_KEY="your-own-secret"
+python3 browser_app.py
+```
+
+---
+
+## 🧪 Development & Testing
+
+The test suite is **offline** — it never performs a real download.
+
+```bash
+pip install -r requirements-dev.txt
+
+pytest -q                # run the suite (15 tests)
+pyflakes modules tests   # lint for unused imports / undefined names
+```
+
+Tests cover filename sanitization, the cancellation wiring (including an end-to-end HTTP
+cancel through the Flask test client), the progress hook's completion/abort paths,
+secret-key hygiene, and the `/api/*` routes.
+
+> **Note:** When changing runtime code, keep the `AppDir/usr/bin/` copy in sync with the
+> top-level sources — it is what an AppImage build ships.
 
 ---
 
 ## 🖥️ AppImage Packaging (Linux)
 
-You can package this application as an AppImage for easy distribution on Debian, Ubuntu, Mint, and other Linux systems. 
+The `AppDir/` tree stages the app for packaging as a portable **AppImage** for Debian,
+Ubuntu, Mint, and similar distributions.
 
-**Recommended storage location:**
-- Store your AppImage in `~/Applications` (create this folder if it doesn't exist). This keeps user-level apps organized and accessible.
+**Recommended storage location:** keep the built AppImage in `~/Applications` (create the
+folder if needed) to keep user-level apps organized.
 
-> **Note:** This project is a work in progress. AppImage packaging scripts and instructions will be provided as the project matures.
-
----
-
-## 🚫 License
-
-This software is free for personal, educational, or non-commercial use only.  
-**Commercial use is strictly prohibited without prior written permission.**  
-See [LICENSE](LICENSE) for details.
+> Packaging scripts and full instructions are being finalized as the project matures.
 
 ---
 
 ## 🛣️ Roadmap
 
-- [ ] Add support for more media sources (Vimeo, SoundCloud, etc.)
-- [ ] Enhanced backup and restore features
+- [ ] Support additional sources (Vimeo, SoundCloud, …)
+- [ ] Enhanced backup and restore
 - [ ] Improved error handling and reporting
-- [ ] User authentication (optional)
+- [ ] Optional user authentication
 - [ ] More customization options
+- [ ] Automated integration test + CI
+- [ ] Anchor data/download paths to a fixed app-data directory (independent of `cwd`)
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please open an issue or pull request to discuss your ideas.
+Contributions are welcome — please open an issue or pull request to discuss ideas.
+Run `pytest` and `pyflakes` before submitting, and keep the `AppDir/` copy in sync.
+
+---
+
+## 🚫 License
+
+Free for personal, educational, or non-commercial use only.
+**Commercial use is strictly prohibited without prior written permission.**
+See [LICENSE](LICENSE) for details.
 
 ---
 
 ## 📢 Disclaimer
 
-This project is not affiliated with YouTube or any other media provider.  
-Please respect the terms of service of all platforms you use with this tool. 
+This project is not affiliated with YouTube or any other media provider. Please respect the
+terms of service of every platform you use with this tool, and only download content you
+are legally permitted to.

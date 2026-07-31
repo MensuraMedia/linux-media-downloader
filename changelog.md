@@ -15,3 +15,4 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-07-31T00:00:08 | Repointed git origin to MensuraMedia/linux-media-downloader (future work); kept mikesdatawork as upstream |
 | 2026-07-31T00:00:09 | Added tests/test_app.py (15 offline unit + route tests); added requirements-dev.txt (pytest, pyflakes) |
 | 2026-07-31T00:00:10 | Removed unused error_code assignments in media.py; pyflakes clean across runtime modules + tests |
+| 2026-07-31T00:00:11 | Rewrote README into a robust, current form (architecture, structure, API, config, dev/test, packaging); synced AppDir copy |
