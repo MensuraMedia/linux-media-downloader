@@ -18,6 +18,11 @@ def backups():
     """Render the backups page"""
     return render_template('backups.html', download_history=download_history)
 
+@ui_routes.route('/links')
+def links():
+    """Render the links history page"""
+    return render_template('links.html')
+
 @ui_routes.route('/information')
 def information():
     """Render the information page"""

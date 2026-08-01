@@ -87,6 +87,9 @@
                             </div>
                         </div>
                         
+                        <!-- Live current-file readout (size / % / speed) -->
+                        <p class="text-info mb-3" id="current-file-detail" style="display: none;"></p>
+
                         <!-- Progress Table -->
                         <div class="table-responsive" id="progress-table-container" style="display: none;">
                             <table class="table table-bordered border-secondary text-light progress-table">
@@ -143,6 +146,14 @@
         
         // Initially hide the "Full Playlist" option
         $('#full-playlist-option').hide();
+
+        // Pre-fill the URL from a ?url= query param (Links History "Re-use" action)
+        (function () {
+            const preUrl = new URLSearchParams(window.location.search).get('url');
+            if (preUrl) {
+                $('#youtube-url').val(preUrl).trigger('input');
+            }
+        })();
 
         // Set default download path
         fetch("/api/get-default-path")
@@ -536,8 +547,8 @@
                                 // Hide the table loader on error
                                 $('#table-loader').css('display', 'none');
                             });
-                    }, 1000);
-                    
+                    }, 500);
+
                     // Show cancel button
                     $('#cancel-download').removeClass('d-none');
                 } else {
@@ -579,15 +590,35 @@
                 $('#playlist-progress-container').show();
                 $('#playlist-name').text(getDisplayName(playlistTitle || 'Playlist'));
                 
-                // Calculate total progress based on completed files
-                const totalProgress = totalFiles > 0 ? (completedFiles * 100 / totalFiles) : 0;
+                // Calculate total progress, folding in the current file's fraction so
+                // the circle advances smoothly within a file, not only per completed file.
+                const curFrac = (status === 'downloading' && data.progress) ? (data.progress / 100) : 0;
+                const totalProgress = totalFiles > 0 ? ((completedFiles + curFrac) * 100 / totalFiles) : 0;
                 updateCircleProgress('total-progress-circle', 'total-progress-text', totalProgress);
-                
+
                 $('#playlist-progress-text').text(`${completedFiles} of ${totalFiles} files completed`);
             } else {
                 $('#playlist-progress-container').hide();
             }
-            
+
+            // Live current-file readout (size / % / speed), shown for any download
+            const detail = $('#current-file-detail');
+            if (currentFile && (status === 'downloading' || status === 'processing')) {
+                let line = getDisplayName(currentFile);
+                if (status === 'downloading') {
+                    const pct = Math.round(data.progress || 0);
+                    const dl = formatBytes(data.downloaded_bytes || 0);
+                    const tot = data.total_bytes ? ' / ' + formatBytes(data.total_bytes) : '';
+                    const spd = data.speed ? '  •  ' + formatBytes(data.speed) + '/s' : '';
+                    line += `  —  ${dl}${tot}  (${pct}%)${spd}`;
+                } else {
+                    line += '  —  processing…';
+                }
+                detail.text(line).show();
+            } else if (status !== 'downloading' && status !== 'processing') {
+                detail.hide();
+            }
+
             // Update progress table
             if (currentFile) {
                 // Find or create the file row
@@ -611,12 +642,9 @@
                 // Update based on status
                 switch (status) {
                     case 'downloading':
-                        // Calculate progress percentage
-                        const progress = data.downloaded_bytes && data.total_bytes ? 
-                            (data.downloaded_bytes / data.total_bytes * 100) : 0;
-                        const progressInt = Math.round(progress);
-                        
-                        // Update the percentage display
+                        // Use the server-computed progress (which already handles the
+                        // byte-estimate and fragment fallbacks) instead of recomputing.
+                        const progressInt = Math.round(data.progress || 0);
                         progressNumber.text(`${progressInt}%`);
                         break;
                         
@@ -633,6 +661,14 @@
             }
         }
         
+        // Helper: human-readable byte sizes
+        function formatBytes(bytes) {
+            if (!bytes || bytes < 1) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return (bytes / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + units[i];
+        }
+
         // Helper function to format time
         function formatTime(seconds) {
             if (seconds < 60) return `${seconds}s`;

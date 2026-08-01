@@ -96,10 +96,60 @@ def test_download_status_ok(client):
     assert client.get("/api/download-status").status_code == 200
 
 
-def test_cancel_download_sets_flag_through_http(client):
+def test_cancel_download_sets_flag_through_http(tmp_path, monkeypatch, client):
     """End-to-end proof of the fix: an HTTP cancel must be visible in settings."""
+    # Redirect history writes to a temp file so the test never touches repo data.
+    monkeypatch.setattr(settings, "HISTORY_FILE", str(tmp_path / "history.json"))
     settings.reset_cancel()
     r = client.post("/api/cancel-download", json={})
     assert r.get_json()["status"] == "cancelled"
     assert settings.is_cancel_requested() is True
     settings.reset_cancel()
+
+
+# ── progress fallback ────────────────────────────────────────────────────────
+
+def test_progress_hook_fragment_fallback():
+    """When byte totals are absent, progress falls back to fragment counts."""
+    settings.reset_cancel()
+    dp = DownloadProgress(total_files=1)
+    dp.progress_hook({
+        "status": "downloading",
+        "filename": "x.m4a",
+        "downloaded_bytes": 0,
+        "fragment_index": 3,
+        "fragment_count": 12,
+    })
+    assert round(settings.current_download["progress"]) == 25
+    settings.reset_cancel()
+
+
+# ── links history ────────────────────────────────────────────────────────────
+
+def test_add_and_update_link_history(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "LINKS_HISTORY_FILE", str(tmp_path / "links.json"))
+    settings.links_history.clear()
+    entry = settings.add_link_history("https://youtu.be/abc", "audio", "single")
+    assert entry["url"] == "https://youtu.be/abc"
+    assert entry["status"] == "started"
+    settings.update_last_link_history(title="My Song", status="completed")
+    assert settings.links_history[-1]["title"] == "My Song"
+    assert settings.links_history[-1]["status"] == "completed"
+    settings.links_history.clear()
+
+
+def test_links_history_api_newest_first(tmp_path, monkeypatch, client):
+    monkeypatch.setattr(settings, "LINKS_HISTORY_FILE", str(tmp_path / "links.json"))
+    settings.links_history.clear()
+    settings.add_link_history("https://youtu.be/one", "audio", "single")
+    settings.add_link_history("https://youtu.be/two", "video", "playlist")
+    data = client.get("/api/links-history").get_json()
+    assert [d["url"] for d in data] == ["https://youtu.be/two", "https://youtu.be/one"]
+    assert client.post("/api/clear-links-history").get_json()["status"] == "cleared"
+    assert client.get("/api/links-history").get_json() == []
+
+
+def test_links_page_renders(client):
+    r = client.get("/links")
+    assert r.status_code == 200
+    assert b"Links History" in r.data

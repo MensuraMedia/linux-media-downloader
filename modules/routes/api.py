@@ -3,7 +3,12 @@
 # API routes for YT Media Backup
 
 from flask import Blueprint, request, jsonify
-from modules.config.settings import current_download, default_download_path, request_cancel
+from modules.config.settings import (
+    current_download,
+    default_download_path,
+    request_cancel,
+    add_link_history,
+)
 from modules.download.media import get_video_info, start_download_thread
 from modules.utils.file_utils import open_folder
 
@@ -38,10 +43,14 @@ def start_download():
     
     if not url:
         return jsonify({'error': 'No URL provided'})
-    
+
+    # Record the submitted link in the links history (title filled in later
+    # once the download worker resolves it).
+    add_link_history(url, download_type, playlist_mode)
+
     # Start download in a separate thread
     start_download_thread(url, output_dir, download_type, playlist_mode)
-    
+
     return jsonify({'status': 'started'})
 
 @api_routes.route('/api/cancel-download', methods=['POST'])
@@ -79,6 +88,22 @@ def cancel_download():
 def download_status():
     """Get the current download status"""
     return jsonify(current_download)
+
+@api_routes.route('/api/links-history')
+def links_history_route():
+    """Return the links history, newest first."""
+    from modules.config.settings import links_history
+    return jsonify(list(reversed(links_history)))
+
+
+@api_routes.route('/api/clear-links-history', methods=['POST'])
+def clear_links_history():
+    """Clear the entire links history."""
+    from modules.config.settings import links_history, save_links_history
+    links_history.clear()
+    save_links_history()
+    return jsonify({'status': 'cleared'})
+
 
 @api_routes.route('/api/open-folder', methods=['POST'])
 def api_open_folder():

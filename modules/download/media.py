@@ -113,20 +113,33 @@ class DownloadProgress:
                 current_download["current_file"] = filename
                 current_download["message"] = f"Downloading: {filename}"
             
-            # Calculate download progress
+            # Calculate download progress with graceful fallbacks:
+            #   1. exact/estimated byte totals (most common)
+            #   2. fragment counts (DASH/HLS streams that report no byte total)
             downloaded_bytes = d.get("downloaded_bytes", 0)
-            total_bytes = d.get("total_bytes", 0) or d.get("total_bytes_estimate", 0)
+            total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+            frag_index = d.get("fragment_index") or 0
+            frag_count = d.get("fragment_count") or 0
             speed = d.get("speed", 0)
             eta = d.get("eta", 0)
-            
+
+            if total_bytes:
+                progress = downloaded_bytes / total_bytes * 100
+            elif frag_count:
+                progress = frag_index / frag_count * 100
+            else:
+                progress = 0
+
             # Always provide consistent progress data
             current_download.update({
                 'status': 'downloading',
                 'downloaded_bytes': downloaded_bytes,
                 'total_bytes': total_bytes,
+                'fragment_index': frag_index,
+                'fragment_count': frag_count,
                 'speed': speed,
                 'eta': eta,
-                'progress': (downloaded_bytes / total_bytes * 100) if total_bytes else 0
+                'progress': progress
             })
             
             if is_cancel_requested():
@@ -178,6 +191,10 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
     info = get_video_info(url)
     current_download['is_playlist'] = info['is_playlist']
     current_download['output_path'] = output_dir
+
+    # Enrich the most recent links-history entry with the resolved title
+    from modules.config.settings import update_last_link_history
+    update_last_link_history(title=info.get('title'))
     
     if info['is_playlist']:
         current_download['playlist_title'] = info['title']
@@ -358,6 +375,9 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
     except Exception as e:
         current_download['status'] = 'error'
         current_download['message'] = f'Error: {str(e)}'
+
+    # Record the final outcome against the links-history entry (all exit paths).
+    update_last_link_history(status=current_download['status'])
 
 def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single'):
     """Start the download process in a separate thread"""

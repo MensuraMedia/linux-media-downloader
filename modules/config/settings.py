@@ -121,3 +121,69 @@ def load_download_history():
 
 # Load history when this module is imported
 load_download_history()
+
+
+# ── Links history ────────────────────────────────────────────────────────────
+# A running record of every link submitted for download, independent of the
+# download-history above. Persisted so it survives restarts.
+from datetime import datetime
+
+links_history = []
+LINKS_HISTORY_FILE = os.path.join(os.getcwd(), 'data', 'links_history.json')
+
+
+def save_links_history():
+    """Persist links history to JSON, keeping the 500 most recent entries."""
+    global links_history
+    if len(links_history) > 500:
+        links_history = links_history[-500:]
+    try:
+        with open(LINKS_HISTORY_FILE, 'w') as f:
+            json.dump(links_history, f, indent=2)
+    except Exception as e:
+        print(f"Error saving links history: {e}")
+
+
+def load_links_history():
+    """Load links history from JSON file."""
+    global links_history
+    if os.path.exists(LINKS_HISTORY_FILE):
+        try:
+            with open(LINKS_HISTORY_FILE, 'r') as f:
+                links_history = json.load(f)
+        except Exception as e:
+            print(f"Error loading links history: {e}")
+            links_history = []
+    else:
+        links_history = []
+
+
+def add_link_history(url, download_type='audio', playlist_mode='single', title=None):
+    """Record a submitted link at download time. Returns the created entry."""
+    entry = {
+        'url': url,
+        'title': title or url,
+        'download_type': download_type,
+        'playlist_mode': playlist_mode,
+        'status': 'started',
+        'timestamp': datetime.now().isoformat(timespec='seconds'),
+    }
+    links_history.append(entry)
+    save_links_history()
+    return entry
+
+
+def update_last_link_history(title=None, status=None):
+    """Enrich the most recent link entry once the title/result is known."""
+    if not links_history:
+        return
+    entry = links_history[-1]
+    if title:
+        entry['title'] = title
+    if status:
+        entry['status'] = status
+    save_links_history()
+
+
+# Load links history when this module is imported
+load_links_history()
