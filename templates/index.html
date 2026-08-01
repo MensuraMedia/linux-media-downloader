@@ -87,15 +87,25 @@
                             </div>
                         </div>
                         
-                        <!-- Live current-file readout (size / % / speed) -->
-                        <p class="text-info mb-3" id="current-file-detail" style="display: none;"></p>
+                        <!-- Live current-file readout: blue title with a centered bar below -->
+                        <div class="mb-3" id="current-file-detail" style="display: none;">
+                            <div id="current-file-title" class="current-file-title"></div>
+                            <div class="current-file-barrow">
+                                <span class="current-file-bar">
+                                    <div class="progress">
+                                        <div id="current-file-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </span>
+                                <span id="current-file-pct" class="current-file-pct"></span>
+                            </div>
+                        </div>
 
                         <!-- Progress Table -->
                         <div class="table-responsive" id="progress-table-container" style="display: none;">
                             <table class="table table-bordered border-secondary text-light progress-table">
                                 <thead>
                                     <tr>
-                                        <th class="text-center p-1">Progress</th>
+                                        <th class="text-center p-1">Length</th>
                                         <th class="p-1">Name</th>
                                     </tr>
                                 </thead>
@@ -117,8 +127,8 @@
 
 <template id="progress-row-template">
     <tr>
-        <td class="progress-cell">
-            <span class="progress-number">0%</span>
+        <td class="length-cell">
+            <span class="length-number">—</span>
         </td>
         <td class="file-name-cell"></td>
     </tr>
@@ -127,7 +137,7 @@
 <template id="playlist-progress-row-template">
     <tr>
         <td class="file-name-cell"></td>
-        <td class="progress-cell">
+        <td class="length-cell">
             <div class="progress">
                 <div class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
@@ -389,8 +399,8 @@
                         // Add row with video number
                         $('#progress-table-body').append(`
                             <tr id="file-row-${i}">
-                                <td class="progress-cell">
-                                    <span class="progress-number">0%</span>
+                                <td class="length-cell">
+                                    <span class="length-number">—</span>
                                 </td>
                                 <td class="file-name-cell">Video ${videoNumber}</td>
                             </tr>
@@ -408,8 +418,8 @@
                     // Add row with video title
                     $('#progress-table-body').append(`
                         <tr id="file-row-0">
-                            <td class="progress-cell">
-                                <span class="progress-number">0%</span>
+                            <td class="length-cell">
+                                <span class="length-number">—</span>
                             </td>
                             <td class="file-name-cell">${videoTitle}</td>
                         </tr>
@@ -440,8 +450,8 @@
                 $('#progress-table-body').empty();
                 $('#progress-table-body').append(`
                     <tr id="file-row-0">
-                        <td class="progress-cell">
-                            <span class="progress-number">0%</span>
+                        <td class="length-cell">
+                            <span class="length-number">—</span>
                         </td>
                         <td class="file-name-cell">Waiting...</td>
                     </tr>
@@ -601,20 +611,25 @@
                 $('#playlist-progress-container').hide();
             }
 
-            // Live current-file readout (size / % / speed), shown for any download
+            // Live current-file readout: blue title + inline progress bar.
+            // Downloading -> determinate bar filling to the file's %.
+            // Processing  -> animated striped bar (the old "processing" text).
             const detail = $('#current-file-detail');
+            const bar = $('#current-file-bar');
             if (currentFile && (status === 'downloading' || status === 'processing')) {
-                let line = getDisplayName(currentFile);
+                $('#current-file-title').text(getDisplayName(currentFile));
                 if (status === 'downloading') {
                     const pct = Math.round(data.progress || 0);
-                    const dl = formatBytes(data.downloaded_bytes || 0);
-                    const tot = data.total_bytes ? ' / ' + formatBytes(data.total_bytes) : '';
-                    const spd = data.speed ? '  •  ' + formatBytes(data.speed) + '/s' : '';
-                    line += `  —  ${dl}${tot}  (${pct}%)${spd}`;
+                    bar.removeClass('progress-bar-striped progress-bar-animated')
+                       .css('width', pct + '%');
+                    $('#current-file-pct').text(pct + '%');
                 } else {
-                    line += '  —  processing…';
+                    // Processing (e.g. audio extraction): animated bar, no label needed
+                    bar.addClass('progress-bar-striped progress-bar-animated')
+                       .css('width', '100%');
+                    $('#current-file-pct').text('');
                 }
-                detail.text(line).show();
+                detail.show();
             } else if (status !== 'downloading' && status !== 'processing') {
                 detail.hide();
             }
@@ -635,32 +650,26 @@
                     }
                 }
                 
-                // Get the progress elements
-                const progressCell = $(`#file-row-${fileIndex} .progress-cell`);
-                const progressNumber = progressCell.find('.progress-number');
-                
-                // Update based on status
-                switch (status) {
-                    case 'downloading':
-                        // Use the server-computed progress (which already handles the
-                        // byte-estimate and fragment fallbacks) instead of recomputing.
-                        const progressInt = Math.round(data.progress || 0);
-                        progressNumber.text(`${progressInt}%`);
-                        break;
-                        
-                    case 'processing':
-                    case 'completed':
-                    case 'completed_with_errors':
-                        progressNumber.text('Complete');
-                        break;
-                        
-                    case 'error':
-                        progressNumber.text('Error');
-                        break;
+                // Fill the Length cell for this row once the duration is known.
+                // Per-file progress is now shown by the live bar above, so the
+                // table column reports track length instead.
+                if (data.duration) {
+                    $(`#file-row-${fileIndex} .length-number`).text(formatDuration(data.duration));
                 }
             }
         }
         
+        // Helper: seconds -> m:ss or h:mm:ss (track length)
+        function formatDuration(seconds) {
+            seconds = Math.round(seconds || 0);
+            if (!seconds) return '—';
+            const pad = (n) => String(n).padStart(2, '0');
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+        }
+
         // Helper: human-readable byte sizes
         function formatBytes(bytes) {
             if (!bytes || bytes < 1) return '0 B';

@@ -20,3 +20,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-07-31T00:00:13 | Added live current-file readout (size/%/speed), smooth playlist circle, 500ms polling |
 | 2026-07-31T00:00:14 | Added Links History feature: /links page, /api/links-history, persisted links_history, YouTube-style cards |
 | 2026-07-31T00:00:15 | Stopped tracking runtime data/*.json (history regenerated at runtime); added tests (19 total) |
+| 2026-07-31T00:00:16 | UI: current-file bar moved below the blue track title (centered, fixed); removed the 'processing' label |
+| 2026-07-31T00:00:17 | UI: replaced the redundant table 'Progress' column with a 'Length' (track duration) column; backend now exposes per-track duration |

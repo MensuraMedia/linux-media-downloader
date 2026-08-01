@@ -39,8 +39,13 @@
     text-align: left;
 }
 
-.progress-table .progress-cell {
+.progress-table .progress-cell,
+.progress-table .length-cell {
     text-align: center;
+}
+
+.progress-table .length-number {
+    color: #adb5bd;
 }
 
 /* General table styling */

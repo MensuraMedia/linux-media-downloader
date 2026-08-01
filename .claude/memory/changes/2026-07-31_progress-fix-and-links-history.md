@@ -42,7 +42,16 @@ absent (common for DASH audio). Fixes:
 - Stopped tracking runtime `data/*.json` (regenerated at runtime); tests redirect history
   writes to tmp so they never touch repo data.
 
+### UI refinements (follow-up, same day)
+- Current-file readout: filename styled blue (#0d6efd, matching the active sidebar button),
+  with the progress bar moved **below** the title and fixed-centered.
+- Downloading → determinate blue bar; processing → animated striped bar with no text label.
+- Table: replaced the now-redundant **Progress** column with a **Length** column showing
+  each track's duration. Backend exposes `current_download['duration']` from the yt-dlp
+  hook's `info_dict`; frontend formats it (m:ss / h:mm:ss).
+
 ### Verification
 - 19/19 pytest passing (added fragment-fallback, links add/update, links API newest-first +
-  clear, `/links` renders). pyflakes clean. py_compile clean. Not yet visually confirmed in
-  a running server (requires a restart that would interrupt the active download).
+  clear, `/links` renders). pyflakes clean. py_compile clean.
+- UI changes confirmed live in the running server (Length header present, Progress removed,
+  bar-below-title markup served, no 'processing' label).

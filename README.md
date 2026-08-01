@@ -44,9 +44,10 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 
 - **YouTube video & playlist download** — single videos or entire playlists.
 - **Audio or video mode** — audio extracted to MP3 (192 kbps) or full video as MP4.
-- **Real-time progress** — per-file and overall playlist progress with a live
-  "current file — X/Y MB (NN%) at Z MB/s" readout; the overall circle folds in the
-  current file's fraction so it advances smoothly (byte, estimate, and fragment fallbacks).
+- **Real-time progress** — an overall progress circle (which folds in the current file's
+  fraction for smooth movement) plus a live progress bar centered beneath the current
+  track's title; the download table lists each track's **Length** (duration). Byte,
+  estimate, and fragment fallbacks keep the bar accurate.
 - **Cancel in progress** — abort an active download cleanly at any time.
 - **Download history** — the last 100 downloads persisted to `data/download_history.json`.
 - **Links history** — a scrollable, YouTube-style record of every link you've submitted

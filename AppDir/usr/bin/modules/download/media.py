@@ -112,6 +112,9 @@ class DownloadProgress:
                 filename = os.path.basename(d["filename"])
                 current_download["current_file"] = filename
                 current_download["message"] = f"Downloading: {filename}"
+                # Track duration (seconds) for the Length column, when available
+                info_dict = d.get("info_dict") or {}
+                current_download["duration"] = info_dict.get("duration")
             
             # Calculate download progress with graceful fallbacks:
             #   1. exact/estimated byte totals (most common)
@@ -149,10 +152,12 @@ class DownloadProgress:
         
         elif d['status'] == 'finished':
             self.completed_files += 1
+            info_dict = d.get("info_dict") or {}
             current_download.update({
                 'status': 'processing',
                 'completed_files': self.completed_files,
                 'progress': 100,
+                'duration': info_dict.get("duration"),
                 'message': f"Processing {os.path.basename(d['filename'])}..."
             })
             
