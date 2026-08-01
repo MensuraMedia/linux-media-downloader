@@ -346,6 +346,9 @@ a:hover {
     color: #8b949e; font-size: 0.72rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.6rem;
 }
+/* Grayed-out state for playlist-only options before a playlist is detected */
+.opts-disabled { opacity: 0.4; }
+.opts-disabled label { cursor: not-allowed; }
 
 /* Live current-file readout: blue title with a centered bar below it */
 .current-file-title {

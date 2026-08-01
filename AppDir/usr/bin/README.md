@@ -68,8 +68,9 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
   every operation is **undoable** (delete moves files to `.trash`, purgeable via Empty
   trash). Playlists carry a **fixed** sequence badge (assigned newest-highest, wraps
   `999`→`000`), sorted latest-added first, with per-playlist badge colours you can pick.
-- **Playlist download controls** — for playlists, Home shows a **Skip long files** filter
-  and an **Amount** choice (All / First 10 / First 20 / First 30), laid out in clean columns.
+- **Playlist download controls** — a single scope choice (Single Video / All (N) / First
+  10 / 20 / 30) plus a **Skip long files** filter, in clean columns. Playlist-only options
+  stay visible but grayed-out until a playlist is detected.
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.

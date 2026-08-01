@@ -208,15 +208,20 @@ filenames are sanitized both by a custom post-processor and a final directory sw
 
 ### 7.2 Skip long files & top-N limit
 
-When a playlist is detected the Home page reveals two extra controls:
-- **Skip long files (over 6 min)** — `download_media` installs a yt-dlp `match_filter` that
-  returns a skip message for any entry whose `duration` exceeds 360 s, so long tracks are
-  never downloaded.
-- **Amount** — radio controls: All / First 10 / First 20 / First 30. A non-zero `limit`
-  maps to yt-dlp `playlistend`, and `total_files` is capped so the progress UI reflects it.
+The Home options are laid out in three minimal columns — **Format** (Audio/Video),
+**Playlist**, and **Amount** — all always visible. The playlist-only controls start
+**disabled and grayed**, and enable only once a playlist is detected.
 
-The Home options are laid out in three minimal columns — **Format**, **Playlist**, and
-**Amount** (the Amount column appears only once a playlist is detected).
+The scope is a **single mutually-exclusive radio group** (no separate "Full Playlist" +
+"All" — one covers the other):
+- **Single Video** — just the one video.
+- **All (N videos)** — the whole playlist (`playlist_mode=playlist`, `limit=0`).
+- **First 10 / 20 / 30** — `playlist_mode=playlist`, `limit=N` → yt-dlp `playlistend`;
+  `total_files` is capped so the progress UI reflects it.
+
+The **Skip long files (over 6 min)** checkbox installs a yt-dlp `match_filter` that skips any
+entry whose `duration` exceeds 360 s. The frontend derives `playlist_mode`/`limit` from the
+selected scope; the backend API is unchanged.
 
 ### 7.3 Progress reporting
 
@@ -279,7 +284,7 @@ containing **more than one** media file:
 | `clean` | Full clean: strip specials, collapse spaces/dashes to underscores |
 | `remove_special` | Remove special characters |
 | `replace_spaces` | Replace spaces with underscores |
-| `remove_filler` | Drop clutter words — music, mix, remaster, live, 4k, hd, official, video, remix, cover, months, years, … — **even when glued together in camelCase** (`SongOfficialVideo` → `Song`) |
+| `remove_filler` | Drop clutter words — music, mix, remaster, live, 4k/hd, official, video, remix, cover, **ost, soundtrack, score, ova, amv, pv**, months, years, … — **even when glued together in camelCase** (`SongOfficialVideo` → `Song`) |
 | `truncate` | Truncate names to 35 characters |
 | `standard_font` | Normalize fancy / accented / full-width characters to standard ASCII |
 | `abbreviate_dupes` | Shorten tokens that recur across files to 4 chars (`Predator_Soundtrack_Track01` → `Pred_Soun_Track01`); unique parts kept |

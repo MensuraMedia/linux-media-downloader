@@ -40,37 +40,33 @@
                         <div class="col-md-4 option-col">
                             <div class="option-col-label">Playlist</div>
                             <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio" name="playlist-mode" id="single-video" value="single" checked>
-                                <label class="form-check-label" for="single-video">Single Video</label>
+                                <input class="form-check-input" type="radio" name="playlist-scope" id="scope-single" value="single" checked>
+                                <label class="form-check-label" for="scope-single">Single Video</label>
                             </div>
-                            <div class="form-check" id="full-playlist-option" style="display: none;">
-                                <input class="form-check-input" type="radio" name="playlist-mode" id="complete-playlist" value="playlist">
-                                <label class="form-check-label" for="complete-playlist" id="complete-playlist-label">Full Playlist</label>
-                            </div>
-                            <div class="form-check mt-2" id="skip-long-option" style="display: none;">
-                                <input class="form-check-input" type="checkbox" id="skip-long-check">
+                            <div class="form-check mt-2 opts-disabled" id="skip-long-option">
+                                <input class="form-check-input" type="checkbox" id="skip-long-check" disabled>
                                 <label class="form-check-label" for="skip-long-check">Skip long files (over 6 min)</label>
                             </div>
                         </div>
 
-                        <!-- Column 3: Amount (playlists only) -->
-                        <div class="col-md-4 option-col" id="limit-option" style="display: none;">
+                        <!-- Column 3: Amount (enabled once a playlist is detected) -->
+                        <div class="col-md-4 option-col opts-disabled" id="limit-option">
                             <div class="option-col-label">Amount</div>
                             <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio" name="download-limit" id="limit-all" value="0" checked>
-                                <label class="form-check-label" for="limit-all">All</label>
+                                <input class="form-check-input" type="radio" name="playlist-scope" id="scope-all" value="all" disabled>
+                                <label class="form-check-label" for="scope-all" id="scope-all-label">All</label>
                             </div>
                             <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio" name="download-limit" id="limit-10" value="10">
-                                <label class="form-check-label" for="limit-10">First 10</label>
+                                <input class="form-check-input" type="radio" name="playlist-scope" id="scope-10" value="10" disabled>
+                                <label class="form-check-label" for="scope-10">First 10</label>
                             </div>
                             <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio" name="download-limit" id="limit-20" value="20">
-                                <label class="form-check-label" for="limit-20">First 20</label>
+                                <input class="form-check-input" type="radio" name="playlist-scope" id="scope-20" value="20" disabled>
+                                <label class="form-check-label" for="scope-20">First 20</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="download-limit" id="limit-30" value="30">
-                                <label class="form-check-label" for="limit-30">First 30</label>
+                                <input class="form-check-input" type="radio" name="playlist-scope" id="scope-30" value="30" disabled>
+                                <label class="form-check-label" for="scope-30">First 30</label>
                             </div>
                         </div>
                     </div>
@@ -182,9 +178,10 @@
         let default_download_path = './downloads';
         let expectedFiles = []; // Track all expected files
         let downloadedFiles = []; // Track downloaded files
+        let playlistDetected = false; // Whether the current URL is a playlist
         
-        // Initially hide the "Full Playlist" option
-        $('#full-playlist-option').hide();
+        // Playlist-only controls start disabled/grayed until a playlist is found
+        setPlaylistOptions(false);
 
         // Pre-fill the URL from a ?url= query param (Links History "Re-use" action)
         (function () {
@@ -285,12 +282,9 @@
             } else {
                 // Hide loader if URL is empty or invalid
                 $('#link-loader').css('display', 'none');
-                // Hide "Full Playlist" option
-                $('#full-playlist-option').hide();
-                $('#skip-long-option').hide();
-                $('#limit-option').hide();
-                // Ensure Single Video is selected
-                $('#single-video').prop('checked', true);
+                // Reset playlist controls when the URL is empty/invalid
+                playlistDetected = false;
+                setPlaylistOptions(false);
             }
             updateDownloadButton();
         });
@@ -304,6 +298,26 @@
                 $('#start-download').prop('disabled', false);
             } else {
                 $('#start-download').prop('disabled', true);
+            }
+        }
+
+        // Map the unified scope selection to a download mode + limit.
+        // 'single' -> just the video; 'all' -> whole playlist; N -> first N.
+        function getScope() {
+            const v = $('input[name="playlist-scope"]:checked').val() || 'single';
+            if (v === 'single') return { mode: 'single', limit: 0 };
+            if (v === 'all') return { mode: 'playlist', limit: 0 };
+            return { mode: 'playlist', limit: parseInt(v, 10) };
+        }
+
+        // Enable/gray the playlist-only options (Amount radios + Skip long).
+        // They stay visible at all times; only their active state changes.
+        function setPlaylistOptions(enabled) {
+            $('#scope-all, #scope-10, #scope-20, #scope-30, #skip-long-check').prop('disabled', !enabled);
+            $('#skip-long-option, #limit-option').toggleClass('opts-disabled', !enabled);
+            if (!enabled) {
+                $('#scope-single').prop('checked', true);
+                $('#skip-long-check').prop('checked', false);
             }
         }
         
@@ -331,21 +345,15 @@
                     $('#link-loader').css('display', 'none');
                     
                     if (data.is_playlist) {
-                        // Show "Full Playlist" option
-                        $('#full-playlist-option').show();
-                        // Show the "Skip long files" filter and top-N limit for playlists
-                        $('#skip-long-option').show();
-                        $('#limit-option').show();
-
-                        // Update the text for the playlist option
-                        $('#complete-playlist-label').text('Full Playlist (' + data.entries + ' videos)');
+                        // Enable the Skip-long filter and Amount options for playlists
+                        playlistDetected = true;
+                        setPlaylistOptions(true);
+                        // Put the playlist count on the "All" option
+                        $('#scope-all-label').text('All (' + data.entries + ' videos)');
                     } else {
-                        // Hide "Full Playlist" option for single videos
-                        $('#full-playlist-option').hide();
-                        $('#skip-long-option').hide();
-                        $('#limit-option').hide();
-                        // Ensure Single Video is selected
-                        $('#single-video').prop('checked', true);
+                        playlistDetected = false;
+                        setPlaylistOptions(false);
+                        $('#scope-all-label').text('All');
                     }
                 }
                 
@@ -368,12 +376,9 @@
                 function handleError() {
                     // Hide loader on error
                     $('#link-loader').css('display', 'none');
-                    // Hide "Full Playlist" option on error
-                    $('#full-playlist-option').hide();
-                    $('#skip-long-option').hide();
-                    $('#limit-option').hide();
-                    // Ensure Single Video is selected
-                    $('#single-video').prop('checked', true);
+                    // Reset playlist controls on error
+                    playlistDetected = false;
+                    setPlaylistOptions(false);
                 }
                 
                 // If less than 4 seconds have passed, wait for the remainder
@@ -399,9 +404,9 @@
             }
             
             if (!url) return;
-            
-            // Get playlist mode
-            let playlistMode = $('input[name="playlist-mode"]:checked').val();
+
+            // Derive playlist mode + limit from the unified scope selection
+            let playlistMode = getScope().mode;
             
             // Show the table loader
             $('#table-loader').css('display', 'flex');
@@ -513,7 +518,7 @@
             $('#status-message').html('');
             
             // Disable form elements during download
-            $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-mode"], #start-download').prop('disabled', true);
+            $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-scope"], #start-download').prop('disabled', true);
             
             // Keep table loader visible until we start getting actual download updates
             
@@ -529,7 +534,7 @@
                     download_type: downloadType,
                     playlist_mode: playlistMode,
                     skip_long: $('#skip-long-check').is(':checked'),
-                    limit: parseInt($('input[name="download-limit"]:checked').val() || '0', 10)
+                    limit: getScope().limit
                 }),
             })
             .then(response => response.json())
@@ -767,7 +772,9 @@
 
         // Reset form elements
         function resetForm() {
-            $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-mode"], #start-download').prop('disabled', false);
+            $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-scope"], #start-download').prop('disabled', false);
+            // Re-apply the enabled/gray state of the playlist-only options
+            setPlaylistOptions(playlistDetected);
         }
     });
 </script>

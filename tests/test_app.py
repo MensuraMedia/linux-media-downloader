@@ -284,6 +284,15 @@ def test_remove_filler_camelcase(pl_root):
     assert "SongTitle.mp3" in os.listdir(p)
 
 
+def test_remove_filler_media_terms(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist",
+                       ["MyShow_OST_Track01.mp3", "AnimeAMVScore.mp3"])
+    pl.apply_operation(p, "remove_filler")
+    got = os.listdir(p)
+    assert "MyShow Track01.mp3" in got   # OST removed, unique part kept
+    assert "Anime.mp3" in got            # AMV + Score removed from camelCase
+
+
 def test_undo_redo_rename(pl_root):
     p = _make_playlist(pl_root, "mix_playlist", ["a b.mp3", "c d.mp3"])
     pl.apply_operation(p, "replace_spaces")

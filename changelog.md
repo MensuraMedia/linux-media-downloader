@@ -36,3 +36,6 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T10:30:00 | Playlists: sort newest-first (by mtime) so 001=newest; per-playlist badge colour picker (persisted, migrates on rename) |
 | 2026-08-01T10:45:00 | Playlists: added 'Abbreviate duplicates' op (recurring tokens -> 4 chars); 41 tests, live verified |
 | 2026-08-01T11:00:00 | Playlists: softened button hover to a subtle grey (matches the Back button) |
+| 2026-08-01T12:00:00 | Home: unified download scope into one radio group (Single/All(N)/First 10-30); removed duplicate 'Full Playlist' |
+| 2026-08-01T12:15:00 | Home: playlist-only options stay visible but grayed/disabled until a playlist is detected |
+| 2026-08-01T12:30:00 | Playlists: added filler words (OST, soundtrack, score, OVA, ONA, AMV, PV, resolutions, etc.); 44 tests |

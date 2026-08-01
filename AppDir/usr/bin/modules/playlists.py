@@ -94,6 +94,11 @@ FILLER_WORDS = {
     'hq', 'original', 'remix', 'cover', 'official', 'video', 'audio', 'visualizer',
     'lyric', 'lyrics', 'full', 'album', 'version', 'feat', 'ft', 'explicit',
     'clean', 'mv', 'hq', 'edit', 'extended', 'radio',
+    # soundtrack / anime / release qualifiers
+    'ost', 'soundtrack', 'score', 'theme', 'ova', 'ona', 'amv', 'pv', 'op', 'ed',
+    'instrumental', 'inst', 'nightcore', 'sped', 'slowed', 'reverb', '8d',
+    'bonus', 'deluxe', 'remux', 'bluray', 'bd', 'dvd', 'hdr',
+    '1080p', '720p', '480p', '2160p',
     # months (full + abbreviations)
     'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
     'september', 'october', 'november', 'december',
