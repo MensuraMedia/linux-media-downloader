@@ -45,3 +45,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T14:15:00 | Fix: 'First N' now builds only N rows in the progress table (was showing the whole playlist); 50 tests |
 | 2026-08-01T14:30:00 | Playlists: added filler words 'animated'/'animation'/'anime'; Title Case now capitalizes every word (across _ - . digits) |
 | 2026-08-01T14:45:00 | Docs: added File Manager concept document (docs/concept-file-manager.md); 52 tests |
+| 2026-08-01T15:00:00 | Feature: File Manager tab — app-recorded file grid, stats (dup names/same size), global text ops (one-undo), keyboard-controlled inline player, per-file delete; 56 tests |
+| 2026-08-01T15:30:00 | Docs: added Ignore Duplicates concept (docs/concept-ignore-duplicates.md) — originals manifest + >=80% relevancy skip |

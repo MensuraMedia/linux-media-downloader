@@ -162,6 +162,7 @@ Key fields in `current_download`:
 | `/backups` | `backups.html` | **History** of completed downloads |
 | `/playlists` | `playlists.html` | Playlists manager |
 | `/player` | `player.html` | Audio/video player + curation |
+| `/file-manager` | `file-manager.html` | Dense grid of app files + stats + global ops |
 | `/links` | `links.html` | Links history (submitted URLs) |
 | `/information`, `/about` | — | Static info pages |
 
@@ -188,6 +189,9 @@ Key fields in `current_download`:
 | `GET`  | `/api/media?path=…` | — | Stream a media file (supports HTTP range/seeking) |
 | `POST` | `/api/delete-media` | `{path}` | Move a single file to its folder's `.trash` |
 | `POST` | `/api/add-to-folder` | `{path, folder}` | Copy a file into a (new) curation folder |
+| `GET`  | `/api/app-media` | — | App-recorded files only (File Manager) `[{name, path, folder, size}]` |
+| `GET`  | `/api/file-stats` | — | `{total, duplicate_names, same_size}` |
+| `POST` | `/api/global-operation` | `{operation}` | Apply a text op across every app folder (one undo) |
 | `POST` | `/api/open-folder` | `{path}` | `{status}` |
 
 **Download parameters**
@@ -337,7 +341,25 @@ Curation while listening:
 
 All three media endpoints validate the path with `is_safe_path` (confined to download roots).
 
-### 7.8 Filename sanitization
+### 7.8 File Manager
+
+The **File Manager** tab (`/file-manager`) is a bulk view of **app-recorded files only** —
+media inside the app's playlist folders (`list_app_media`, narrower than the Player's
+`/api/all-media`). It shows:
+
+- **Stat tiles** (`/api/file-stats`): total files, duplicate names, and same-size groups —
+  each tile filters the grid.
+- A **dense grid** (3+ responsive columns, ~1px cells): each cell is `▶ play · filename ·
+  🗑 trash`.
+- **Global text operations** (`/api/global-operation`) — the same ops as Playlists, applied
+  across every app folder as **one undoable action** (shares the Undo/Redo stack).
+- An **inline keyboard-controlled player**: click ▶ to play (streamed via `/api/media`),
+  then **→** +5s, **←** −2s, **↑/↓** volume, **Delete** = stop & delete. A deleted file's
+  cell turns muted/strikethrough and non-interactive.
+
+See [docs/concept-file-manager.md](docs/concept-file-manager.md) for the original design.
+
+### 7.9 Filename sanitization
 
 `sanitize_filename()` (used on downloads and the `clean` operation):
 
@@ -430,7 +452,8 @@ AppImage: `~/Applications`.
 | cwd-relative data/download paths | Anchor to a fixed app-data dir (planned) |
 | Native window (`app.py`) needs a display | Use `browser_app.py` when headless |
 | Integration test with a real download + CI | Planned |
-| **File Manager** (dense grid of app files, stats, global text ops, inline keyboard player) | Concept — see [docs/concept-file-manager.md](docs/concept-file-manager.md) |
+| **File Manager** (dense grid of app files, stats, global text ops, inline keyboard player) | Implemented — see §7.8 |
+| **Ignore Duplicates** (skip already-downloaded / ≥80%-similar tracks via an originals manifest) | Concept — see [docs/concept-ignore-duplicates.md](docs/concept-ignore-duplicates.md) |
 
 ---
 

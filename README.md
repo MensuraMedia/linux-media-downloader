@@ -75,6 +75,9 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
   forward, volume, skip ±10s, auto-next) over a searchable list of every downloaded file.
   Delete a file you don't want, or **add it to a new folder** as you listen to build a
   curated playlist on the fly.
+- **File Manager** — a dense grid of every app-recorded file with stats (duplicate names,
+  same size), the full set of global text operations (one-undo across all folders), and an
+  inline keyboard-controlled player (→ +5s, ← −2s, ↑/↓ volume, Delete = stop & delete).
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.
