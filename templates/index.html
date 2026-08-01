@@ -429,8 +429,11 @@
                 $('#progress-table-body').empty();
                 
                 if (data.is_playlist && playlistMode === 'playlist') {
-                    // If it's a playlist and user wants the whole playlist
-                    const entries = data.entries || 1;
+                    // Build only as many rows as will actually be downloaded:
+                    // the whole playlist for "All", or just the top-N for "First N".
+                    const scopeLimit = getScope().limit;
+                    let entries = data.entries || 1;
+                    if (scopeLimit > 0) entries = Math.min(entries, scopeLimit);
                     for (let i = 0; i < entries; i++) {
                         const videoNumber = i + 1;
                         expectedFiles.push({
