@@ -7,6 +7,8 @@
 
 ## Changes
 <!-- Add newest first -->
+- [2026-08-01 state retention](changes/2026-08-01_state-retention.md) — Home reconnects to an in-progress download; /api/download rejects concurrent downloads
+- [2026-08-01 file manager](changes/2026-08-01_file-manager.md) — File Manager tab (app-file grid, stats, global ops, keyboard player)
 - [2026-08-01 player + firstN fix](changes/2026-08-01_player-and-firstN-fix.md) — Player/curation page (stream, delete, add-to-folder); First-N table row cap fix
 - [2026-08-01 unified scope + gray + filler](changes/2026-08-01_unified-scope-gray-filler.md) — One download-scope radio group, grayed-until-detected options, more filler words
 - [2026-08-01 fixed seq + limit + 3col](changes/2026-08-01_fixed-seq-limit-3col.md) — Fixed sequence badges (wrap 999→000), top-N download limit, 3-column Home layout

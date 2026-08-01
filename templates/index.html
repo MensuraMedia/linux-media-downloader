@@ -183,6 +183,9 @@
         // Playlist-only controls start disabled/grayed until a playlist is found
         setPlaylistOptions(false);
 
+        // If a download is already running in the background, reconnect to it
+        resumeActiveDownload();
+
         // Pre-fill the URL from a ?url= query param (Links History "Re-use" action)
         (function () {
             const preUrl = new URLSearchParams(window.location.search).get('url');
@@ -543,76 +546,10 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'started') {
-                    // Start polling for status updates
-                    if (statusIntervalId) {
-                        clearInterval(statusIntervalId);
-                    }
-                    
-                    // Flag to track if download has actually started
-                    let downloadStarted = false;
-                    
-                    statusIntervalId = setInterval(function() {
-                        fetch('/api/download-status')
-                            .then(response => response.json())
-                            .then(data => {
-                                // Check if this is the first file being downloaded
-                                if (!downloadStarted && data.current_file) {
-                                    downloadStarted = true;
-                                    // Only hide the loader when the first file starts downloading
-                                    $('#table-loader').css('display', 'none');
-                                }
-                                
-                                updateProgressUI(
-                                    data.total_progress, 
-                                    data.current_file, 
-                                    data.total_files, 
-                                    data.completed_files, 
-                                    data.playlist_title, 
-                                    data.is_playlist,
-                                    data.status,
-                                    data  // Pass the entire data object
-                                );
-                                
-                                if (data.status === 'completed') {
-                                    clearInterval(statusIntervalId);
-                                    showSuccess('Backups Completed', ''); // Only show "Backups Completed"
-                                    resetForm();
-                                    // Hide cancel button
-                                    $('#cancel-download').addClass("d-none");
-                                    // Ensure loader is hidden
-                                    $('#table-loader').css('display', 'none');
-                                } else if (data.status === 'completed_with_errors') {
-                                    clearInterval(statusIntervalId);
-                                    showWarning('Backups Completed', ''); // Only show "Backups Completed"
-                                    resetForm();
-                                    // Hide cancel button
-                                    $('#cancel-download').addClass("d-none");
-                                    // Ensure loader is hidden
-                                    $('#table-loader').css('display', 'none');
-                                } else if (data.status === 'error') {
-                                    clearInterval(statusIntervalId);
-                                    showError(data.message || 'An error occurred during download.');
-                                    resetForm();
-                                    // Hide cancel button
-                                    $('#cancel-download').addClass("d-none");
-                                    $('#progress-table-container').hide();
-                                    // Ensure loader is hidden
-                                    $('#table-loader').css('display', 'none');
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error checking status:', error);
-                                // Hide the table loader on error
-                                $('#table-loader').css('display', 'none');
-                            });
-                    }, 500);
-
-                    // Show cancel button
-                    $('#cancel-download').removeClass('d-none');
+                    startStatusPolling();
                 } else {
-                    // Hide table loader on error
+                    // Hide table loader on error / rejection (e.g. already in progress)
                     $('#table-loader').css('display', 'none');
-                    
                     showError(data.error || 'Failed to start download');
                     resetForm();
                     $('#progress-table-container').hide();
@@ -626,6 +563,87 @@
                 resetForm();
                 $('#progress-table-container').hide();
             });
+        }
+
+        // Poll the server for download status and update the UI. Used by both a
+        // freshly-started download and by reconnecting to one already in progress.
+        function startStatusPolling() {
+            if (statusIntervalId) clearInterval(statusIntervalId);
+            let downloadStarted = false;
+            statusIntervalId = setInterval(function () {
+                fetch('/api/download-status')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!downloadStarted && data.current_file) {
+                            downloadStarted = true;
+                            $('#table-loader').css('display', 'none');
+                        }
+                        updateProgressUI(
+                            data.total_progress, data.current_file, data.total_files,
+                            data.completed_files, data.playlist_title, data.is_playlist,
+                            data.status, data);
+
+                        if (data.status === 'completed') {
+                            clearInterval(statusIntervalId);
+                            showSuccess('Backups Completed', '');
+                            resetForm(); $('#cancel-download').addClass('d-none');
+                            $('#table-loader').css('display', 'none');
+                        } else if (data.status === 'completed_with_errors') {
+                            clearInterval(statusIntervalId);
+                            showWarning('Backups Completed', '');
+                            resetForm(); $('#cancel-download').addClass('d-none');
+                            $('#table-loader').css('display', 'none');
+                        } else if (data.status === 'error') {
+                            clearInterval(statusIntervalId);
+                            showError(data.message || 'An error occurred during download.');
+                            resetForm(); $('#cancel-download').addClass('d-none');
+                            $('#progress-table-container').hide();
+                            $('#table-loader').css('display', 'none');
+                        } else if (data.status === 'cancelled') {
+                            clearInterval(statusIntervalId);
+                            resetForm(); $('#cancel-download').addClass('d-none');
+                            $('#table-loader').css('display', 'none');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking status:', error);
+                        $('#table-loader').css('display', 'none');
+                    });
+            }, 500);
+            $('#cancel-download').removeClass('d-none');
+        }
+
+        // On page load, reconnect to a download already running in the background
+        // (so navigating away and back to Home shows the live status).
+        function resumeActiveDownload() {
+            fetch('/api/download-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (!['starting', 'downloading', 'processing'].includes(data.status)) return;
+                    expectedFiles = []; downloadedFiles = [];
+                    $('#progress-table-body').empty();
+                    const total = data.total_files || 1;
+                    if (data.is_playlist && total > 1) {
+                        for (let i = 0; i < total; i++) {
+                            expectedFiles.push({ index: i, filename: `Video ${i + 1}`, progress: 0 });
+                            $('#progress-table-body').append(
+                                `<tr id="file-row-${i}"><td class="length-cell"><span class="length-number">—</span></td>`
+                                + `<td class="file-name-cell">Video ${i + 1}</td></tr>`);
+                        }
+                    } else {
+                        const title = getDisplayName(data.playlist_title || data.current_file || 'Video download');
+                        expectedFiles.push({ index: 0, filename: title, progress: 0 });
+                        $('#progress-table-body').append(
+                            `<tr id="file-row-0"><td class="length-cell"><span class="length-number">—</span></td>`
+                            + `<td class="file-name-cell">${title}</td></tr>`);
+                    }
+                    $('#progress-table-container').show();
+                    // Lock the form while the existing download runs
+                    $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-scope"], #start-download').prop('disabled', true);
+                    $('#status-message').html('<div class="text-info">Reconnected to a download already in progress…</div>');
+                    startStatusPolling();
+                })
+                .catch(() => {});
         }
 
         // Helper function to update circle progress (only for playlist progress)

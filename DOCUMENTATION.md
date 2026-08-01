@@ -172,7 +172,7 @@ Key fields in `current_download`:
 |--------|----------|--------------|----------|
 | `POST` | `/api/check-url` | `{url}` | Playlist/video info (`is_playlist`, `entries`, `title`) |
 | `GET`  | `/api/get-default-path` | — | `{path}` |
-| `POST` | `/api/download` | `{url, output_dir, download_type, playlist_mode, skip_long, limit}` | `{status:"started"}` |
+| `POST` | `/api/download` | `{url, output_dir, download_type, playlist_mode, skip_long, limit}` | `{status:"started"}`, or `{error}` if a download is already active |
 | `POST` | `/api/cancel-download` | — | `{status:"cancelled"}` |
 | `GET`  | `/api/download-status` | — | `current_download` dict |
 | `GET`  | `/api/links-history` | — | Links list, newest first |
@@ -246,6 +246,17 @@ The UI shows the current track's title in the active-sidebar blue with a centere
 it (determinate while downloading, animated while processing), and the overall circle folds
 in the current file's fraction so it advances smoothly. The download table's first column
 reports each track's **Length** (duration).
+
+### 7.3b State retention (reconnect)
+
+Download state lives server-side in `current_download`, so it survives page navigation. On
+load, the Home page calls `resumeActiveDownload()` → `/api/download-status`; if a download is
+active (`starting`/`downloading`/`processing`) it rebuilds the progress table, shows the
+circle/current-file readout and **Cancel**, locks the form, and resumes polling — so leaving
+Home and returning shows the **live** status of the background download. To avoid the old
+"must restart the app" bug, `/api/download` **refuses to start a second download** while one
+is active (returns `{error: "A download is already in progress"}`); the running one can be
+cancelled from the reconnected UI.
 
 ### 7.4 Cancellation
 

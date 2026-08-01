@@ -104,6 +104,16 @@ def test_download_requires_url(client):
     assert client.post("/api/download", json={}).get_json().get("error")
 
 
+def test_download_rejected_when_already_active(client):
+    """A second download must be refused while one is running (no thread spawned)."""
+    settings.current_download["status"] = "downloading"
+    try:
+        r = client.post("/api/download", json={"url": "https://example.com/x"})
+        assert "already in progress" in (r.get_json().get("error") or "")
+    finally:
+        settings.current_download["status"] = None
+
+
 def test_download_status_ok(client):
     assert client.get("/api/download-status").status_code == 200
 

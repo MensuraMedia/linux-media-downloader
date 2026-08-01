@@ -50,6 +50,11 @@ def start_download():
     if not url:
         return jsonify({'error': 'No URL provided'})
 
+    # Refuse to start a second download while one is still running — otherwise the
+    # background thread and shared state collide (the old "must restart the app" bug).
+    if current_download.get('status') in ('starting', 'downloading', 'processing'):
+        return jsonify({'error': 'A download is already in progress'})
+
     # Record the submitted link in the links history (title filled in later
     # once the download worker resolves it).
     add_link_history(url, download_type, playlist_mode)
