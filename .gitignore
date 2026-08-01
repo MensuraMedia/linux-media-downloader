@@ -27,3 +27,6 @@ Thumbs.db
 # Data and downloads (optional, comment out if you want to track these)
 #downloads/
 #backups/ 
+# Runtime data (history is regenerated at runtime, not version-controlled)
+data/*.json
+**/data/*.json
