@@ -180,7 +180,8 @@ class DownloadProgress:
             })
 
 
-def download_media(url, output_dir, download_type='audio', playlist_mode='single', skip_long=False):
+def download_media(url, output_dir, download_type='audio', playlist_mode='single',
+                   skip_long=False, limit=0):
     """Download media from YouTube"""
     reset_cancel()
 
@@ -207,6 +208,10 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
     else:
         current_download['playlist_title'] = ''
         current_download['total_files'] = 1
+
+    # Limit a playlist download to the top N items if requested
+    if info['is_playlist'] and playlist_mode == 'playlist' and limit and limit > 0:
+        current_download['total_files'] = min(current_download['total_files'], limit)
     
     # If it's a playlist but user selected single video, modify URL
     if info['is_playlist'] and playlist_mode == 'single':
@@ -267,6 +272,10 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                 return f"Skipping long file (>6 min): {info_dict.get('title', '')}"
             return None
         ydl_opts['match_filter'] = _skip_long_filter
+
+    # Limit a playlist to the top N items (yt-dlp downloads items 1..N)
+    if info['is_playlist'] and playlist_mode == 'playlist' and limit and limit > 0:
+        ydl_opts['playlistend'] = limit
 
 
     if download_type == 'audio':
@@ -394,11 +403,12 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
     # Record the final outcome against the links-history entry (all exit paths).
     update_last_link_history(status=current_download['status'])
 
-def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single', skip_long=False):
+def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single',
+                          skip_long=False, limit=0):
     """Start the download process in a separate thread"""
     download_thread = threading.Thread(
         target=download_media,
-        args=(url, output_dir, download_type, playlist_mode, skip_long)
+        args=(url, output_dir, download_type, playlist_mode, skip_long, limit)
     )
     download_thread.daemon = True
     download_thread.start()

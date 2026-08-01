@@ -336,6 +336,17 @@ a:hover {
     letter-spacing: 0.5px;
 }
 
+/* Home page: 3-column minimal options layout */
+.options-row .option-col {
+    padding-left: 1.5rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+.options-row .option-col:first-child { border-left: none; }
+.option-col-label {
+    color: #8b949e; font-size: 0.72rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.6rem;
+}
+
 /* Live current-file readout: blue title with a centered bar below it */
 .current-file-title {
     color: #0d6efd;              /* matches the active sidebar button */

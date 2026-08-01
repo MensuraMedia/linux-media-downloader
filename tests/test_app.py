@@ -173,6 +173,9 @@ def test_links_page_renders(client):
 def pl_root(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "default_download_path", str(tmp_path))
     monkeypatch.setattr(settings, "download_history", [])
+    # Isolate the per-playlist metadata stores so tests never touch repo data.
+    monkeypatch.setattr(pl, "COLORS_FILE", str(tmp_path / "colors.json"))
+    monkeypatch.setattr(pl, "SEQ_FILE", str(tmp_path / "seq.json"))
     pl._undo_stack.clear()
     pl._redo_stack.clear()
     return tmp_path
@@ -263,6 +266,17 @@ def test_operation_delete_long(pl_root, monkeypatch):
     assert "long.mp3" in os.listdir(p)
 
 
+def test_empty_trash(pl_root, monkeypatch):
+    p = _make_playlist(pl_root, "mix_playlist", ["short.mp3", "long.mp3"])
+    monkeypatch.setattr(pl, "_duration", lambda path: 500 if os.path.basename(path) == "long.mp3" else 100)
+    pl.apply_operation(p, "delete_long")
+    assert pl.trash_count(p) == 1
+    res = pl.empty_trash(p)
+    assert res["status"] == "success" and res["purged"] == 1
+    assert pl.trash_count(p) == 0
+    assert not os.path.isdir(os.path.join(p, ".trash"))
+
+
 def test_remove_filler_camelcase(pl_root):
     p = _make_playlist(pl_root, "mix_playlist",
                        ["SongTitleOfficialVideo.mp3", "keep.mp3"])
@@ -290,6 +304,67 @@ def test_playlists_page_renders(client):
     r = client.get("/playlists")
     assert r.status_code == 200
     assert b"Playlists" in r.data
+
+
+def test_abbreviate_duplicates(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist",
+                       ["Predator_Soundtrack_Track01.mp3",
+                        "Predator_Soundtrack_Track02.mp3"])
+    pl.apply_operation(p, "abbreviate_dupes")
+    assert sorted(os.listdir(p)) == ["Pred_Soun_Track01.mp3", "Pred_Soun_Track02.mp3"]
+
+
+def test_playlist_color_set_and_listed(pl_root, monkeypatch):
+    monkeypatch.setattr(pl, "COLORS_FILE", str(pl_root / "colors.json"))
+    p = _make_playlist(pl_root, "mix_playlist", ["a.mp3", "b.mp3"])
+    assert pl.set_playlist_color(p, "#ff0000")["status"] == "success"
+    entry = next(x for x in pl.list_playlists() if x["name"] == "mix_playlist")
+    assert entry["color"] == "#ff0000"
+
+
+def test_playlist_color_invalid_defaults(pl_root, monkeypatch):
+    monkeypatch.setattr(pl, "COLORS_FILE", str(pl_root / "colors.json"))
+    p = _make_playlist(pl_root, "mix_playlist", ["a.mp3", "b.mp3"])
+    assert pl.set_playlist_color(p, "not-a-color")["color"] == "#0d6efd"
+
+
+def test_list_playlists_sorted_newest_first(pl_root):
+    import time
+    old = _make_playlist(pl_root, "old_playlist", ["a.mp3", "b.mp3"])
+    _make_playlist(pl_root, "new_playlist", ["a.mp3", "b.mp3"])
+    os.utime(old, (time.time() - 10000, time.time() - 10000))
+    names = [x["name"] for x in pl.list_playlists()]
+    assert names.index("new_playlist") < names.index("old_playlist")
+
+
+def test_sequence_fixed_and_descending(pl_root):
+    import time
+    a = _make_playlist(pl_root, "a_playlist", ["x.mp3", "y.mp3"])
+    _make_playlist(pl_root, "b_playlist", ["x.mp3", "y.mp3"])
+    os.utime(a, (time.time() - 100, time.time() - 100))  # a older, b newer
+    lst = pl.list_playlists()
+    seq = {p["name"]: p["seq"] for p in lst}
+    assert lst[0]["name"] == "b_playlist"          # newest on top
+    assert seq["b_playlist"] > seq["a_playlist"]   # newest has the higher number
+
+    # Adding another playlist must NOT change existing (fixed) numbers.
+    _make_playlist(pl_root, "c_playlist", ["x.mp3", "y.mp3"])
+    lst2 = pl.list_playlists()
+    seq2 = {p["name"]: p["seq"] for p in lst2}
+    assert seq2["a_playlist"] == seq["a_playlist"]
+    assert seq2["b_playlist"] == seq["b_playlist"]
+    assert lst2[0]["name"] == "c_playlist"
+
+
+def test_sequence_wraps_at_1000(pl_root):
+    import time
+    (pl_root / "seq.json").write_text('{"next": 999, "orders": {}}')
+    a = _make_playlist(pl_root, "a_playlist", ["x.mp3", "y.mp3"])
+    _make_playlist(pl_root, "b_playlist", ["x.mp3", "y.mp3"])
+    os.utime(a, (time.time() - 100, time.time() - 100))  # a -> 999, b -> 1000
+    seq = {p["name"]: p["seq"] for p in pl.list_playlists()}
+    assert seq["a_playlist"] == 999
+    assert seq["b_playlist"] == 0  # 1000 % 1000 wraps to 000
 
 
 def test_scan_does_not_walk_into_parent(tmp_path, monkeypatch):

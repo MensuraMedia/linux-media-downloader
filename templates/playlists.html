@@ -13,6 +13,11 @@
         font-size: 1.9rem; font-weight: 800; color: #0d6efd;
         min-width: 3ch; text-align: right; line-height: 1;
         font-variant-numeric: tabular-nums; letter-spacing: 1px;
+        position: relative; cursor: pointer; user-select: none;
+    }
+    .pl-card .pl-color-input {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        opacity: 0; border: 0; padding: 0; cursor: pointer;
     }
     .pl-card .pl-icon { font-size: 1.4rem; color: #6c757d; }
     .pl-card .pl-info { flex: 1 1 auto; min-width: 0; }
@@ -38,6 +43,16 @@
     .files-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .files-table td.name { word-break: break-all; }
     .pl-empty { text-align: center; color: #8b949e; padding: 3.5rem 1rem; }
+
+    /* Subtle, uniform button hover across the page — matches the Back button
+       (muted grey) instead of each outline colour's vivid fill. */
+    .pl-wrap .btn:not(:disabled):hover,
+    .pl-wrap .btn:not(:disabled):focus {
+        background-color: #555 !important;
+        border-color: #555 !important;
+        color: #fff !important;
+        box-shadow: none !important;
+    }
     .pl-scroll { max-height: calc(100vh - 320px); overflow-y: auto; }
     .pl-scroll::-webkit-scrollbar { width: 10px; }
     .pl-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 6px; }
@@ -90,6 +105,7 @@
             <button class="btn btn-outline-light" data-op="remove_filler">Remove filler words</button>
             <button class="btn btn-outline-light" data-op="truncate">Truncate to 35</button>
             <button class="btn btn-outline-light" data-op="standard_font">Standard font</button>
+            <button class="btn btn-outline-light" data-op="abbreviate_dupes">Abbreviate duplicates</button>
             <button class="btn btn-outline-light" data-op="number_prefix">Add number prefix</button>
         </div>
 
@@ -99,6 +115,12 @@
             <button class="btn btn-outline-light" data-op="upper_case">UPPER CASE</button>
             <button class="btn btn-outline-light" data-op="title_case">Title Case</button>
             <button class="btn btn-outline-light" data-op="camel_case">CamelCase</button>
+        </div>
+
+        <div class="mb-2">
+            <button class="btn btn-outline-danger btn-sm" id="pl-empty-trash" disabled>
+                <i class="bi bi-trash3"></i> Empty trash
+            </button>
         </div>
 
         <div id="pl-op-status" class="mb-2"></div>
@@ -160,9 +182,12 @@
                         + '<p class="mt-2">No playlists found yet. Download a full playlist to see it here.</p></div>';
                     return;
                 }
-                el.innerHTML = list.map((p, idx) => `
+                el.innerHTML = list.map((p) => `
                     <div class="pl-card">
-                        <span class="pl-seq">${String(idx + 1).padStart(3, '0')}</span>
+                        <label class="pl-seq" style="color:${esc(p.color || '#0d6efd')}" title="Click to pick a color">
+                            <input type="color" class="pl-color-input" value="${esc(p.color || '#0d6efd')}" data-path="${esc(p.path)}">
+                            ${String(p.seq ?? 0).padStart(3, '0')}
+                        </label>
                         <span class="pl-icon"><i class="bi bi-collection-play-fill"></i></span>
                         <div class="pl-info">
                             <p class="pl-name">${esc(p.name)}</p>
@@ -221,6 +246,7 @@
                 files = res.files || [];
                 renderFiles();
                 updateUndoRedo(res);
+                updateTrash(res);
             }).catch(() => {
                 document.getElementById('pl-files-body').innerHTML =
                     '<tr><td colspan="3" class="text-center text-danger py-3">Failed to read files.</td></tr>';
@@ -229,6 +255,25 @@
         function updateUndoRedo(state) {
             document.getElementById('pl-undo').disabled = !state.can_undo;
             document.getElementById('pl-redo').disabled = !state.can_redo;
+        }
+        function updateTrash(state) {
+            const btn = document.getElementById('pl-empty-trash');
+            const n = state.trash_count || 0;
+            btn.disabled = n === 0;
+            btn.innerHTML = '<i class="bi bi-trash3"></i> Empty trash' + (n ? ` (${n})` : '');
+        }
+        function emptyTrash() {
+            if (!confirm('Permanently delete all trashed files? This cannot be undone.')) return;
+            const status = document.getElementById('pl-op-status');
+            fetch('/api/playlist-empty-trash', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: currentPath }),
+            }).then(r => r.json()).then(res => {
+                status.innerHTML = res.status === 'success'
+                    ? `<span class="text-success">Purged ${res.purged} file(s) from trash.</span>`
+                    : `<span class="text-danger">${esc(res.message || 'Failed')}</span>`;
+                loadFiles();
+            });
         }
         function undoRedo(which) {
             const status = document.getElementById('pl-op-status');
@@ -298,12 +343,27 @@
             });
             document.getElementById('pl-undo').addEventListener('click', () => undoRedo('undo'));
             document.getElementById('pl-redo').addEventListener('click', () => undoRedo('redo'));
+            document.getElementById('pl-empty-trash').addEventListener('click', emptyTrash);
 
             document.getElementById('pl-list').addEventListener('click', function (e) {
                 const open = e.target.closest('.open-pl');
                 const ren = e.target.closest('.rename-pl');
                 if (open) openPlaylist(open.getAttribute('data-path'), open.getAttribute('data-name'));
                 else if (ren) renamePlaylist(ren.getAttribute('data-path'), ren.getAttribute('data-name'), false);
+            });
+
+            // Playlist number colour: live-recolor on input, persist on change.
+            document.getElementById('pl-list').addEventListener('input', function (e) {
+                const inp = e.target.closest('.pl-color-input');
+                if (inp) inp.closest('.pl-seq').style.color = inp.value;
+            });
+            document.getElementById('pl-list').addEventListener('change', function (e) {
+                const inp = e.target.closest('.pl-color-input');
+                if (!inp) return;
+                fetch('/api/playlist-color', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: inp.getAttribute('data-path'), color: inp.value }),
+                });
             });
 
             document.querySelectorAll('.ops-bar .btn').forEach(btn => {

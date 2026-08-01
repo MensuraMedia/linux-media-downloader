@@ -4,12 +4,77 @@
 
 import os
 import re
+import json
+import shutil
 import hashlib
 import subprocess
 import unicodedata
 
 from modules.config import settings
 from modules.utils.file_utils import sanitize_filename
+
+# Per-playlist number colors (keyed by folder realpath), persisted to data/
+COLORS_FILE = os.path.abspath(os.path.join('data', 'playlist_colors.json'))
+DEFAULT_COLOR = '#0d6efd'
+
+
+def load_colors():
+    try:
+        with open(COLORS_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_colors(colors):
+    try:
+        os.makedirs(os.path.dirname(COLORS_FILE), exist_ok=True)
+        with open(COLORS_FILE, 'w') as f:
+            json.dump(colors, f, indent=2)
+    except Exception as e:
+        print(f"Error saving playlist colors: {e}")
+
+
+def _sanitize_color(color):
+    color = (color or '').strip()
+    return color.lower() if re.fullmatch(r'#[0-9a-fA-F]{6}', color) else DEFAULT_COLOR
+
+
+def set_playlist_color(path, color):
+    """Persist a badge color for a playlist (keyed by its real path)."""
+    if not _is_safe_path(path) or not os.path.isdir(path):
+        return {'status': 'error', 'message': 'Invalid playlist path'}
+    color = _sanitize_color(color)
+    colors = load_colors()
+    colors[os.path.realpath(path)] = color
+    save_colors(colors)
+    return {'status': 'success', 'color': color}
+
+
+# Fixed per-playlist sequence numbers. Each playlist keeps a monotonic "order"
+# assigned when it is first seen (newest gets the highest); the displayed badge
+# is order % 1000, so it counts 000..999 and wraps back to 000.
+SEQ_FILE = os.path.abspath(os.path.join('data', 'playlist_seq.json'))
+
+
+def load_seq():
+    try:
+        with open(SEQ_FILE) as f:
+            data = json.load(f)
+            if isinstance(data, dict) and isinstance(data.get('orders'), dict):
+                return {'next': int(data.get('next', 0)), 'orders': data['orders']}
+    except Exception:
+        pass
+    return {'next': 0, 'orders': {}}
+
+
+def save_seq(seq):
+    try:
+        os.makedirs(os.path.dirname(SEQ_FILE), exist_ok=True)
+        with open(SEQ_FILE, 'w') as f:
+            json.dump(seq, f, indent=2)
+    except Exception as e:
+        print(f"Error saving playlist sequence: {e}")
 
 # Media file types we recognize as "tracks"
 MEDIA_EXTS = {
@@ -106,7 +171,8 @@ def _media_files(path):
 
 
 def list_playlists():
-    """Return folders holding more than one media file, newest-name first."""
+    """Return folders holding more than one media file, newest (by mtime) first."""
+    colors = load_colors()
     seen = {}
     for base in _scan_dirs():
         try:
@@ -131,13 +197,37 @@ def list_playlists():
                         size += os.path.getsize(os.path.join(folder, f))
                     except OSError:
                         pass
+                try:
+                    mtime = os.path.getmtime(folder)
+                except OSError:
+                    mtime = 0
                 seen[rp] = {
                     'name': name,
                     'path': folder,
                     'file_count': len(files),
                     'total_size': size,
+                    'mtime': mtime,
+                    'color': colors.get(rp, DEFAULT_COLOR),
                 }
-    return sorted(seen.values(), key=lambda x: x['name'].lower())
+
+    # Assign a fixed, monotonic order to any newly-seen playlist. New ones are
+    # numbered oldest→newest by mtime so the most recent gets the highest order.
+    seq = load_seq()
+    orders = seq['orders']
+    new_rps = sorted((rp for rp in seen if rp not in orders),
+                     key=lambda rp: seen[rp]['mtime'])
+    if new_rps:
+        for rp in new_rps:
+            orders[rp] = seq['next']
+            seq['next'] += 1
+        save_seq(seq)
+
+    for rp, info in seen.items():
+        info['order'] = orders.get(rp, 0)
+        info['seq'] = info['order'] % 1000  # 000..999, wraps
+
+    # Latest-added (highest order) first.
+    return sorted(seen.values(), key=lambda x: x['order'], reverse=True)
 
 
 def list_playlist_files(path):
@@ -172,9 +262,21 @@ def rename_playlist(path, new_name):
         return {'status': 'error', 'message': 'A folder with that name already exists'}
     try:
         os.rename(path, new_path)
-        return {'status': 'success', 'path': new_path, 'name': new_name}
     except OSError as e:
         return {'status': 'error', 'message': str(e)}
+    old_rp = os.path.realpath(path)
+    new_rp = os.path.realpath(new_path)
+    # Carry the badge color over to the new path
+    colors = load_colors()
+    if old_rp in colors:
+        colors[new_rp] = colors.pop(old_rp)
+        save_colors(colors)
+    # Carry the fixed sequence number over too
+    seq = load_seq()
+    if old_rp in seq['orders']:
+        seq['orders'][new_rp] = seq['orders'].pop(old_rp)
+        save_seq(seq)
+    return {'status': 'success', 'path': new_path, 'name': new_name}
 
 
 def delete_long_files(path, max_seconds=LONG_SECONDS):
@@ -196,6 +298,32 @@ def delete_long_files(path, max_seconds=LONG_SECONDS):
                 pass
     _record(moves)
     return {'status': 'success', 'deleted': len(moves), **stack_state()}
+
+
+def trash_count(path):
+    """Number of files currently sitting in a playlist's .trash folder."""
+    trash = os.path.join(path, '.trash')
+    if not os.path.isdir(trash):
+        return 0
+    try:
+        return sum(1 for f in os.listdir(trash) if os.path.isfile(os.path.join(trash, f)))
+    except OSError:
+        return 0
+
+
+def empty_trash(path):
+    """Permanently delete a playlist's .trash folder (not undoable)."""
+    if not _is_safe_path(path) or not os.path.isdir(path):
+        return {'status': 'error', 'message': 'Invalid playlist path'}
+    trash = os.path.join(path, '.trash')
+    if not os.path.isdir(trash):
+        return {'status': 'success', 'purged': 0}
+    purged = trash_count(path)
+    try:
+        shutil.rmtree(trash)
+    except OSError as e:
+        return {'status': 'error', 'message': str(e)}
+    return {'status': 'success', 'purged': purged}
 
 
 # ── Undo / redo ──────────────────────────────────────────────────────────────
@@ -340,6 +468,40 @@ def _camel_case(base):
     return ''.join(w[:1].upper() + w[1:].lower() for w in words)
 
 
+def abbreviate_duplicate_strings(path, keep=4):
+    """Shorten tokens that recur across many files to their first `keep` chars.
+
+    e.g. a playlist where every file starts "Predator_Soundtrack_" becomes
+    "Pred_Soun_<unique part>" — the repeated words are abbreviated, the unique
+    per-track parts are left intact.
+    """
+    if not _is_safe_path(path) or not os.path.isdir(path):
+        return {'status': 'error', 'message': 'Invalid playlist path'}
+
+    bases = [os.path.splitext(f)[0] for f in _media_files(path)]
+
+    # How many files each token appears in (case-insensitive, once per file)
+    freq = {}
+    for base in bases:
+        for low in {t.lower() for t in re.split(r'[\s_\-]+', base) if t}:
+            freq[low] = freq.get(low, 0) + 1
+
+    # "Duplicate" = recurs in 2+ files and is long enough that abbreviating helps
+    common = {tok for tok, count in freq.items() if count >= 2 and len(tok) > keep}
+    if not common:
+        _record([])
+        return {'status': 'success', 'renamed': 0, **stack_state()}
+
+    def mapper(base, idx):
+        parts = re.split(r'([\s_\-]+)', base)  # keeps delimiters at odd indices
+        return ''.join(
+            part[:keep] if (i % 2 == 0 and part.lower() in common) else part
+            for i, part in enumerate(parts)
+        )
+
+    return _rename_within(path, mapper)
+
+
 def apply_operation(path, operation):
     """Dispatch a bulk file operation over a playlist folder."""
     if not _is_safe_path(path) or not os.path.isdir(path):
@@ -347,6 +509,8 @@ def apply_operation(path, operation):
 
     if operation == 'delete_long':
         return delete_long_files(path)
+    if operation == 'abbreviate_dupes':
+        return abbreviate_duplicate_strings(path)
 
     if operation == 'number_prefix':
         files = _media_files(path)

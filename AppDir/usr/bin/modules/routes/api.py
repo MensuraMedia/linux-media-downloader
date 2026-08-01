@@ -41,6 +41,10 @@ def start_download():
     download_type = data.get('download_type', 'audio')
     playlist_mode = data.get('playlist_mode', 'single')
     skip_long = bool(data.get('skip_long', False))
+    try:
+        limit = int(data.get('limit', 0) or 0)
+    except (TypeError, ValueError):
+        limit = 0
 
     if not url:
         return jsonify({'error': 'No URL provided'})
@@ -50,7 +54,7 @@ def start_download():
     add_link_history(url, download_type, playlist_mode)
 
     # Start download in a separate thread
-    start_download_thread(url, output_dir, download_type, playlist_mode, skip_long)
+    start_download_thread(url, output_dir, download_type, playlist_mode, skip_long, limit)
 
     return jsonify({'status': 'started'})
 
@@ -121,7 +125,8 @@ def playlist_files_route():
     files = playlists.list_playlist_files(path)
     if files is None:
         return jsonify({'error': 'Invalid or unknown playlist path'}), 400
-    return jsonify({'path': path, 'files': files, **playlists.stack_state()})
+    return jsonify({'path': path, 'files': files,
+                    'trash_count': playlists.trash_count(path), **playlists.stack_state()})
 
 
 @api_routes.route('/api/rename-playlist', methods=['POST'])
@@ -152,6 +157,22 @@ def playlist_redo_route():
     """Redo the most recently undone playlist file operation."""
     from modules import playlists
     return jsonify(playlists.redo_last())
+
+
+@api_routes.route('/api/playlist-color', methods=['POST'])
+def playlist_color_route():
+    """Set the badge color for a playlist."""
+    from modules import playlists
+    data = request.get_json() or {}
+    return jsonify(playlists.set_playlist_color(data.get('path', ''), data.get('color', '')))
+
+
+@api_routes.route('/api/playlist-empty-trash', methods=['POST'])
+def playlist_empty_trash_route():
+    """Permanently purge a playlist's .trash folder."""
+    from modules import playlists
+    path = (request.get_json() or {}).get('path', '')
+    return jsonify(playlists.empty_trash(path))
 
 
 @api_routes.route('/api/open-folder', methods=['POST'])
