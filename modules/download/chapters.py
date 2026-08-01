@@ -87,8 +87,11 @@ def _unique(out_dir, name, ext):
     return dst
 
 
-def split_file(src_path, segments, out_dir, video_title, reencode=False):
-    """Cut src_path into one file per segment with ffmpeg. Returns {status, tracks}."""
+def split_file(src_path, segments, out_dir, video_title, reencode=False, on_progress=None):
+    """Cut src_path into one file per segment with ffmpeg. Returns {status, tracks}.
+
+    on_progress(i, count, title) is called before each segment (for UI updates).
+    """
     if not segments:
         return {'status': 'error', 'message': 'No chapters/tracklist found', 'tracks': 0}
     if not os.path.isfile(src_path):
@@ -98,6 +101,11 @@ def split_file(src_path, segments, out_dir, video_title, reencode=False):
     count = len(segments)
     made = 0
     for i, seg in enumerate(segments):
+        if on_progress:
+            try:
+                on_progress(i, count, segment_filename(seg, i, count, video_title))
+            except Exception:
+                pass
         dst = _unique(out_dir, segment_filename(seg, i, count, video_title), ext)
         cmd = ['ffmpeg', '-y', '-ss', str(seg['start']), '-i', src_path]
         if seg.get('end') is not None:

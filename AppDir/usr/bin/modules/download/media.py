@@ -4,6 +4,7 @@
 
 import os
 import threading
+from datetime import datetime
 import yt_dlp
 from modules.utils.file_utils import sanitize_filename
 from modules.config.settings import (
@@ -98,11 +99,13 @@ def get_video_info(url):
 
 class DownloadProgress:
     """Progress callback for YT-DLP"""
-    def __init__(self, total_files=1):
+    def __init__(self, total_files=1, split_pending=False):
         self.current_file = ""
         self.total_files = total_files
         self.completed_files = 0
         self.info = None   # richest info_dict seen (chapters/description) for splitting
+        self.split_pending = split_pending  # defer 'completed' until the split runs
+        self.done = False   # all expected files downloaded (independent of status)
 
     def progress_hook(self, d):
         """Handle download progress updates"""
@@ -169,11 +172,21 @@ class DownloadProgress:
             
             # Check if this was the last file
             if self.completed_files >= self.total_files:
-                current_download.update({
-                    'status': 'completed',
-                    'total_progress': 100,
-                    'message': 'Download completed successfully!'
-                })
+                self.done = True
+                if self.split_pending:
+                    # Don't declare 'completed' yet — the split phase runs next and
+                    # reports its own progress, so the UI keeps polling.
+                    current_download.update({
+                        'status': 'processing',
+                        'total_progress': 100,
+                        'message': 'Downloaded — preparing to split into tracks…'
+                    })
+                else:
+                    current_download.update({
+                        'status': 'completed',
+                        'total_progress': 100,
+                        'message': 'Download completed successfully!'
+                    })
         
         elif d['status'] == 'error':
             current_download.update({
@@ -186,6 +199,12 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                    skip_long=False, limit=0, split_chapters=False):
     """Download media from YouTube"""
     reset_cancel()
+
+    # "Split Multi-Chapter video" is a single-video operation: split ONE long video
+    # into its chapters. Force single-video download so a playlist/radio URL
+    # (e.g. list=RD...) resolves to the primary video, then gets split.
+    if split_chapters:
+        playlist_mode = 'single'
 
     current_download['status'] = 'starting'
     # Keep progress property for compatibility but we don't update it anymore
@@ -233,7 +252,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
         output_dir = os.path.join(output_dir, f"{playlist_name}_playlist")
         os.makedirs(output_dir, exist_ok=True)
     
-    progress_tracker = DownloadProgress(current_download['total_files'])
+    progress_tracker = DownloadProgress(current_download['total_files'], split_pending=split_chapters)
     
     # Create a sanitize filename post-processor
     class SanitizeFilenamePP(yt_dlp.postprocessor.PostProcessor):
@@ -336,8 +355,8 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                     except Exception as e:
                         print(f"Error renaming {filename}: {e}")
         
-        # If status is still not completed (due to errors), try alternative method
-        if current_download['status'] != 'completed':
+        # If the download didn't actually finish, try alternative method
+        if not progress_tracker.done:
             # If we're missing files or there was an error code, try alternative method
             current_download['message'] = 'Trying alternative download method...'
             
@@ -354,8 +373,8 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                 # Try the download again
                 ydl.download([url])
             
-            # If status is not already set to completed by the progress hook, handle any errors
-            if current_download['status'] != 'completed':
+            # If the retry still didn't finish, handle any errors
+            if not progress_tracker.done:
                 # Check if we had partial success (some files downloaded)
                 actual_count = current_download['completed_files']
                 expected_count = current_download['total_files']
@@ -380,25 +399,32 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                         except Exception as e:
                             print(f"Error renaming {filename}: {e}")
         
-        # Add to download history
+        # Add to download history (timestamped for reliable descending sort).
+        # Record the real download outcome, not the deferred 'processing' state.
+        hist_status = 'completed' if progress_tracker.done else current_download['status']
         download_history.append({
             'url': url,
             'output_dir': output_dir,
             'download_type': download_type,
             'is_playlist': info['is_playlist'],
             'title': info.get('title', 'Unknown'),
-            'status': current_download['status']
+            'status': hist_status,
+            'timestamp': datetime.now().isoformat(timespec='seconds')
         })
         # Save history to persistent storage
         from modules.config.settings import save_download_history
         save_download_history()
 
-        # Optional: split a single downloaded video into per-track files
-        if split_chapters and playlist_mode != 'playlist':
+        # Optional: split the single downloaded video into per-track files.
+        # This runs while status is 'processing' and reports its own progress,
+        # then sets the final 'completed' state — so the UI never says "done" early.
+        if split_chapters:
             try:
                 _split_into_tracks(output_dir, progress_tracker.info, info.get('title'))
             except Exception as e:
                 print(f"Chapter split error: {e}")
+                current_download['status'] = 'completed'
+                current_download['message'] = f'Downloaded (split failed: {e})'
 
     except yt_dlp.utils.DownloadCancelled:
         # User cancelled mid-download: report it as cancelled, not an error,
@@ -414,30 +440,69 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
 
 
 def _split_into_tracks(output_dir, meta, fallback_title):
-    """Split the just-downloaded single file into per-track files via chapters/tracklist."""
+    """Split the just-downloaded single file into per-track files via chapters/tracklist.
+
+    Reports progress through current_download (status 'processing') so the UI shows
+    live split progress, and only sets 'completed' when the split is done.
+    """
     from modules.download.chapters import chapter_segments, split_file, MEDIA_EXTS
     meta = meta or {}
     segments = chapter_segments(meta, meta.get('duration'))
+    title = meta.get('title') or fallback_title or 'video'
+
     if not segments:
-        current_download['message'] = 'No chapters/tracklist found to split'
+        # No tracklist — the whole file is kept; download is complete.
+        current_download['status'] = 'completed'
+        current_download['message'] = 'Downloaded (no chapters/tracklist found to split)'
         return
+
     # Find the file we just downloaded (newest top-level media file)
     cands = [os.path.join(output_dir, f) for f in os.listdir(output_dir)
              if os.path.isfile(os.path.join(output_dir, f))
              and os.path.splitext(f)[1].lower() in MEDIA_EXTS]
     if not cands:
+        current_download['status'] = 'completed'
+        current_download['message'] = 'Downloaded (source file not found for split)'
         return
     src = max(cands, key=os.path.getmtime)
-    title = meta.get('title') or fallback_title or 'video'
     tracks_dir = os.path.join(output_dir, (sanitize_filename(title) or 'tracks') + '_playlist')
-    current_download['message'] = 'Splitting into tracks…'
-    res = split_file(src, segments, tracks_dir, title)
-    if res.get('tracks'):
-        current_download['message'] = f"Split into {res['tracks']} tracks"
+
+    total = len(segments)
+    # Reframe the progress UI for the split phase
+    current_download.update({
+        'status': 'processing',
+        'is_playlist': True,
+        'playlist_title': f'{title} — splitting into tracks',
+        'total_files': total,
+        'completed_files': 0,
+        'total_progress': 0,
+        'current_file': '',
+        'message': f'Splitting into {total} tracks…',
+    })
+
+    def on_progress(i, count, seg_title):
+        current_download.update({
+            'status': 'processing',
+            'current_file': seg_title,
+            'completed_files': i,
+            'total_progress': min(i * 100 / count, 100),
+            'message': f'Splitting track {i + 1} of {count}…',
+        })
+
+    res = split_file(src, segments, tracks_dir, title, on_progress=on_progress)
+    made = res.get('tracks', 0)
+    if made:
         try:
             os.remove(src)  # keep only the split tracks
         except OSError:
             pass
+    current_download.update({
+        'status': 'completed',
+        'completed_files': made,
+        'total_files': total,
+        'total_progress': 100,
+        'message': f'Split into {made} tracks' if made else 'Split produced no tracks',
+    })
 
 
 def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single',

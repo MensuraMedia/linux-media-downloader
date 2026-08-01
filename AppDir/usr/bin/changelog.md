@@ -52,3 +52,7 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T16:30:00 | Docs: added Chapter/Tracklist Split technical design (docs/concept-chapter-split.md) — recommends ffmpeg -c copy post-hoc with hybrid chapter source |
 | 2026-08-01T17:00:00 | Feature: Chapter/Tracklist Split implemented — modules/download/chapters.py (parse chapters/description, ffmpeg -c copy), Home 'Split Multi-Chapter video' option; unlabeled -> NN_<video-title-summary>; output folder auto-listed in Playlists/File Manager |
 | 2026-08-01T17:15:00 | Changed 'long file' threshold from 6 to 7 minutes everywhere (skip-long filter, delete-long, labels, docs) |
+| 2026-08-01T17:30:00 | Fix(History): folder links now use the working .open-folder handler (dead openDirectory removed); page reads fresh from settings |
+| 2026-08-01T17:35:00 | Fix(History): descending sort by download time; added timestamps to history entries; in-place history mutation (no stale refs) |
+| 2026-08-01T17:45:00 | Fix(Split): works for playlist/radio URLs (forces single-video); reads chapters reliably |
+| 2026-08-01T17:50:00 | Fix(Split): accurate progress + status during splitting — defers 'completed' until split done, reports per-track progress (65 tests) |

@@ -83,13 +83,15 @@ def cancel_download():
     if current_download.get('playlist_title') or current_download.get('current_file'):
         # Create a title from playlist or current file
         title = current_download.get('playlist_title') or current_download.get('current_file', 'Unknown')
+        from datetime import datetime
         download_history.append({
             'url': '',  # URL might not be accessible here
             'output_dir': current_download.get('output_path', ''),
             'download_type': current_download.get('selected_mode', 'unknown'),
             'is_playlist': current_download.get('is_playlist', False),
             'title': title,
-            'status': 'completed_with_errors'  # This will show as 'Partial'
+            'status': 'completed_with_errors',  # This will show as 'Partial'
+            'timestamp': datetime.now().isoformat(timespec='seconds')
         })
         save_download_history()
 

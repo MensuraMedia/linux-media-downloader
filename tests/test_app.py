@@ -74,6 +74,32 @@ def test_progress_hook_finished_marks_completed():
     dp.progress_hook({"status": "finished", "filename": "/tmp/song.mp3"})
     assert settings.current_download["status"] == "completed"
     assert settings.current_download["total_progress"] == 100
+    assert dp.done is True
+
+
+def test_progress_hook_defers_completion_when_splitting():
+    """With a split pending, the last file must NOT flip status to 'completed'."""
+    settings.reset_cancel()
+    dp = DownloadProgress(total_files=1, split_pending=True)
+    dp.progress_hook({"status": "finished", "filename": "/tmp/song.mp3"})
+    assert dp.done is True                                  # download really finished
+    assert settings.current_download["status"] == "processing"   # but not 'completed' yet
+    settings.current_download["status"] = None
+
+
+def test_split_file_reports_progress(tmp_path):
+    import subprocess
+    src = tmp_path / "full.mp3"
+    subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+                    "-t", "6", "-q:a", "9", str(src)], capture_output=True)
+    if not src.exists():
+        pytest.skip("ffmpeg not available")
+    calls = []
+    segs = [{"start": 0, "end": 3, "title": "A"}, {"start": 3, "end": 6, "title": "B"}]
+    ch.split_file(str(src), segs, str(tmp_path / "o"), "V",
+                  on_progress=lambda i, c, t: calls.append((i, c, t)))
+    assert [c[0] for c in calls] == [0, 1]      # called before each segment
+    assert calls[0][1] == 2                       # count
 
 
 # ── secret key hygiene ───────────────────────────────────────────────────────
