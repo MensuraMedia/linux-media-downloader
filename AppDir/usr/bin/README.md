@@ -44,9 +44,13 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 
 - **YouTube video & playlist download** — single videos or entire playlists.
 - **Audio or video mode** — audio extracted to MP3 (192 kbps) or full video as MP4.
-- **Real-time progress** — per-file and overall playlist progress, speed, and ETA.
+- **Real-time progress** — per-file and overall playlist progress with a live
+  "current file — X/Y MB (NN%) at Z MB/s" readout; the overall circle folds in the
+  current file's fraction so it advances smoothly (byte, estimate, and fragment fallbacks).
 - **Cancel in progress** — abort an active download cleanly at any time.
 - **Download history** — the last 100 downloads persisted to `data/download_history.json`.
+- **Links history** — a scrollable, YouTube-style record of every link you've submitted
+  (thumbnails, badges, search, open/copy/re-use), on its own **Links** tab.
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.
@@ -186,7 +190,11 @@ Flask binds only to `127.0.0.1` (localhost); the app is not exposed to your netw
 | `POST` | `/api/download` | Start a download in a background thread |
 | `POST` | `/api/cancel-download` | Signal the active download to stop |
 | `GET`  | `/api/download-status` | Poll current download status/progress |
+| `GET`  | `/api/links-history` | Return submitted-links history, newest first |
+| `POST` | `/api/clear-links-history` | Clear the links history |
 | `POST` | `/api/open-folder` | Open a folder in the system file manager |
+
+Pages: `/` (Home), `/backups` (Backups), `/links` (Links History), `/about`.
 
 ---
 

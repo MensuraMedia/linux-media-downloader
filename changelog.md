@@ -16,3 +16,7 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-07-31T00:00:09 | Added tests/test_app.py (15 offline unit + route tests); added requirements-dev.txt (pytest, pyflakes) |
 | 2026-07-31T00:00:10 | Removed unused error_code assignments in media.py; pyflakes clean across runtime modules + tests |
 | 2026-07-31T00:00:11 | Rewrote README into a robust, current form (architecture, structure, API, config, dev/test, packaging); synced AppDir copy |
+| 2026-07-31T00:00:12 | Fixed per-file progress: frontend now uses server-computed progress; added byte-estimate + fragment fallbacks |
+| 2026-07-31T00:00:13 | Added live current-file readout (size/%/speed), smooth playlist circle, 500ms polling |
+| 2026-07-31T00:00:14 | Added Links History feature: /links page, /api/links-history, persisted links_history, YouTube-style cards |
+| 2026-07-31T00:00:15 | Stopped tracking runtime data/*.json (history regenerated at runtime); added tests (19 total) |
