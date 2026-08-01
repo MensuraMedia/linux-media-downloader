@@ -361,14 +361,16 @@ a:hover {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* Center the bar on its own so it lines up under the centered title. The
+   percentage sits centered BELOW the bar, so its presence/absence never shifts
+   the bar off-center. */
 .current-file-barrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;   /* bar stays fixed-centered regardless of title */
-    gap: 0.6rem;
+    text-align: center;
 }
 .current-file-bar {
+    display: inline-block;
     width: 180px;
+    vertical-align: middle;
 }
 .current-file-bar .progress {
     height: 10px;
@@ -380,8 +382,10 @@ a:hover {
     transition: width 0.2s ease;
 }
 .current-file-pct {
+    display: block;
+    text-align: center;
     color: #adb5bd;
     font-size: 0.8rem;
-    min-width: 42px;
-    text-align: left;
+    margin-top: 0.25rem;
+    min-height: 1em;   /* reserve height so layout doesn't jump */
 }

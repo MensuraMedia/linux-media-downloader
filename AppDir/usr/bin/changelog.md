@@ -56,3 +56,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T17:35:00 | Fix(History): descending sort by download time; added timestamps to history entries; in-place history mutation (no stale refs) |
 | 2026-08-01T17:45:00 | Fix(Split): works for playlist/radio URLs (forces single-video); reads chapters reliably |
 | 2026-08-01T17:50:00 | Fix(Split): accurate progress + status during splitting — defers 'completed' until split done, reports per-track progress (65 tests) |
+| 2026-08-01T18:00:00 | UI: File Manager grid fixed to 3 columns with 2px cell padding + gap |
+| 2026-08-01T18:05:00 | UI: fixed Home progress-bar symmetry — bar now centers under the title (percentage moved below, no longer shifts the bar) |
