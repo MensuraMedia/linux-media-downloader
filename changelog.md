@@ -40,3 +40,4 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T12:15:00 | Home: playlist-only options stay visible but grayed/disabled until a playlist is detected |
 | 2026-08-01T12:30:00 | Playlists: added filler words (OST, soundtrack, score, OVA, ONA, AMV, PV, resolutions, etc.); 44 tests |
 | 2026-08-01T13:00:00 | Playlists: reorganized text controls into minimal labeled columns (Files / Clean up / Transform / Case), matching Home |
+| 2026-08-01T13:30:00 | Playlists: fixed action-button alignment — truncate long names (numbers/actions no longer compressed), tidy Undo/Redo header |
