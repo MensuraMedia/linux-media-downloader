@@ -291,7 +291,8 @@ page: a **Files** row (Delete long / Empty trash) plus three minimal labeled col
 | `clean` | Full clean: strip specials, collapse spaces/dashes to underscores |
 | `remove_special` | Remove special characters |
 | `replace_spaces` | Replace spaces with underscores |
-| `remove_filler` | Drop clutter words — music, mix, remaster, live, 4k/hd, official, video, remix, cover, **ost, soundtrack, score, ova, amv, pv**, months, years, … — **even when glued together in camelCase** (`SongOfficialVideo` → `Song`) |
+| `remove_filler` | Drop clutter words — music, mix, remaster, live, 4k/hd, official, video, remix, cover, **ost, soundtrack, score, ova, amv, pv, anime, animated**, months, years, … — **even when glued together in camelCase** (`SongOfficialVideo` → `Song`) |
+| `title_case` | Capitalize **every** word, including across `_ - .` and digits (`brad_fiedel_the` → `Brad_Fiedel_The`) |
 | `truncate` | Truncate names to 35 characters |
 | `standard_font` | Normalize fancy / accented / full-width characters to standard ASCII |
 | `abbreviate_dupes` | Shorten tokens that recur across files to 4 chars (`Predator_Soundtrack_Track01` → `Pred_Soun_Track01`); unique parts kept |
@@ -429,6 +430,7 @@ AppImage: `~/Applications`.
 | cwd-relative data/download paths | Anchor to a fixed app-data dir (planned) |
 | Native window (`app.py`) needs a display | Use `browser_app.py` when headless |
 | Integration test with a real download + CI | Planned |
+| **File Manager** (dense grid of app files, stats, global text ops, inline keyboard player) | Concept — see [docs/concept-file-manager.md](docs/concept-file-manager.md) |
 
 ---
 

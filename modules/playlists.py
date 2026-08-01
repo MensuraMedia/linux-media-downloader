@@ -96,6 +96,7 @@ FILLER_WORDS = {
     'clean', 'mv', 'hq', 'edit', 'extended', 'radio',
     # soundtrack / anime / release qualifiers
     'ost', 'soundtrack', 'score', 'theme', 'ova', 'ona', 'amv', 'pv', 'op', 'ed',
+    'animated', 'animation', 'anime',
     'instrumental', 'inst', 'nightcore', 'sped', 'slowed', 'reverb', '8d',
     'bonus', 'deluxe', 'remux', 'bluray', 'bd', 'dvd', 'hdr',
     '1080p', '720p', '480p', '2160p',
@@ -465,7 +466,11 @@ def _to_standard(base):
 
 
 def _title_case(base):
-    return re.sub(r'\b\w', lambda m: m.group().upper(), base.lower())
+    # Capitalize the first letter of every word, including after separators like
+    # _ - . spaces and digits (so brad_fiedel_the_terminator -> Brad_Fiedel_The_Terminator).
+    return re.sub(r'(^|[^A-Za-z])([a-z])',
+                  lambda m: m.group(1) + m.group(2).upper(),
+                  base.lower())
 
 
 def _camel_case(base):

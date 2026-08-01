@@ -43,3 +43,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T13:30:00 | Playlists: fixed action-button alignment — truncate long names (numbers/actions no longer compressed), tidy Undo/Redo header |
 | 2026-08-01T14:00:00 | Feature: Player tab — audio/video player (seek/volume/skip/auto-next) over all downloaded files, with delete + add-to-folder curation; range streaming |
 | 2026-08-01T14:15:00 | Fix: 'First N' now builds only N rows in the progress table (was showing the whole playlist); 50 tests |
+| 2026-08-01T14:30:00 | Playlists: added filler words 'animated'/'animation'/'anime'; Title Case now capitalizes every word (across _ - . digits) |
+| 2026-08-01T14:45:00 | Docs: added File Manager concept document (docs/concept-file-manager.md); 52 tests |

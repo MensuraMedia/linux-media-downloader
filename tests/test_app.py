@@ -254,6 +254,21 @@ def test_operation_camel_case(pl_root):
     assert "HelloWorld.mp3" in os.listdir(p)
 
 
+def test_operation_title_case_all_words(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist",
+                       ["brad_fiedel_the terminator.mp3", "keep.mp3"])
+    pl.apply_operation(p, "title_case")
+    # Every word capitalized, across underscores and spaces
+    assert "Brad_Fiedel_The Terminator.mp3" in os.listdir(p)
+
+
+def test_remove_filler_animated(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist",
+                       ["Cool_Animated_Short.mp3", "keep.mp3"])
+    pl.apply_operation(p, "remove_filler")
+    assert "Cool Short.mp3" in os.listdir(p)
+
+
 def test_operation_delete_long(pl_root, monkeypatch):
     p = _make_playlist(pl_root, "mix_playlist", ["short.mp3", "long.mp3"])
     monkeypatch.setattr(pl, "_duration", lambda path: 500 if os.path.basename(path) == "long.mp3" else 100)
@@ -286,11 +301,11 @@ def test_remove_filler_camelcase(pl_root):
 
 def test_remove_filler_media_terms(pl_root):
     p = _make_playlist(pl_root, "mix_playlist",
-                       ["MyShow_OST_Track01.mp3", "AnimeAMVScore.mp3"])
+                       ["MyShow_OST_Track01.mp3", "AnimeAMVScoreBattle.mp3"])
     pl.apply_operation(p, "remove_filler")
     got = os.listdir(p)
     assert "MyShow Track01.mp3" in got   # OST removed, unique part kept
-    assert "Anime.mp3" in got            # AMV + Score removed from camelCase
+    assert "Battle.mp3" in got           # Anime + AMV + Score removed from camelCase
 
 
 def test_undo_redo_rename(pl_root):
