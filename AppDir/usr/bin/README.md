@@ -60,7 +60,9 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
   with more than one track). Rename a playlist (renames its folder), then drill in to a
   sortable table (Length / Filename / Size) with bulk operations: delete all long files
   (>6 min), clean up names, remove special characters, replace spaces with underscores,
-  and add a number prefix.
+  remove filler words (music/mix/remaster/live/4k/hd/months/…), truncate to 35 chars,
+  normalize to a standard font (ASCII), change case (lower/UPPER/Title/Camel), and add a
+  number prefix. Name collisions are resolved with a 4-character salt.
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.

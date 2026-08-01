@@ -4,7 +4,9 @@
 
 import os
 import re
+import hashlib
 import subprocess
+import unicodedata
 
 from modules.config import settings
 from modules.utils.file_utils import sanitize_filename
@@ -17,6 +19,21 @@ MEDIA_EXTS = {
 
 # A "long" file is over 6 minutes
 LONG_SECONDS = 360
+
+# Max characters kept by the "truncate" operation
+TRUNCATE_LEN = 35
+
+# Common clutter words stripped by the "remove filler" operation (case-insensitive)
+FILLER_WORDS = {
+    'music', 'mix', 'remaster', 'remastered', 'live', '4k', '8k', 'hd', 'uhd',
+    'hq', 'original', 'remix', 'cover', 'official', 'video', 'audio', 'visualizer',
+    'lyric', 'lyrics', 'full', 'album', 'version', 'feat', 'ft', 'explicit',
+    'clean', 'mv', 'hq', 'edit', 'extended', 'radio',
+    # months (full + abbreviations)
+    'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+    'september', 'october', 'november', 'december',
+    'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
+}
 
 
 def _scan_dirs():
@@ -177,25 +194,73 @@ def delete_long_files(path, max_seconds=LONG_SECONDS):
     return {'status': 'success', 'deleted': deleted}
 
 
+def _unique_name(path, new_name, original):
+    """Return new_name, inserting a 4-char salt before the extension on collision."""
+    if not os.path.exists(os.path.join(path, new_name)):
+        return new_name
+    base, ext = os.path.splitext(new_name)
+    salt = hashlib.md5(original.encode('utf-8', 'ignore')).hexdigest()[:4]
+    candidate = f"{base}_{salt}{ext}"
+    n = 1
+    while os.path.exists(os.path.join(path, candidate)):
+        candidate = f"{base}_{salt}{n}{ext}"
+        n += 1
+    return candidate
+
+
 def _rename_within(path, mapper):
-    """Apply mapper(base_name, index) -> new_base to each media file. Skips collisions."""
+    """Apply mapper(base_name, index) -> new_base to each media file.
+
+    On a name collision a 4-character salt is inserted before the extension so
+    uniqueness is always preserved (rather than skipping the file).
+    """
     if not _is_safe_path(path) or not os.path.isdir(path):
         return {'status': 'error', 'message': 'Invalid playlist path'}
     renamed = 0
     for idx, name in enumerate(_media_files(path)):
         base, ext = os.path.splitext(name)
-        new_name = mapper(base, idx) + ext
+        new_base = (mapper(base, idx) or '').strip() or base
+        new_name = new_base + ext
         if new_name == name:
             continue
-        dst = os.path.join(path, new_name)
-        if os.path.exists(dst):
-            continue
+        new_name = _unique_name(path, new_name, name)
         try:
-            os.rename(os.path.join(path, name), dst)
+            os.rename(os.path.join(path, name), os.path.join(path, new_name))
             renamed += 1
         except OSError:
             pass
     return {'status': 'success', 'renamed': renamed}
+
+
+def _remove_filler(base):
+    """Drop clutter words (filler + years) and bracket noise from a name."""
+    tokens = re.split(r'[\s_\-\[\]\(\)\{\}]+', base)
+    kept = []
+    for tok in tokens:
+        word = re.sub(r'[^\w]', '', tok).lower()
+        if not word:
+            continue
+        if word in FILLER_WORDS:
+            continue
+        if re.fullmatch(r'(?:19|20)\d{2}', word):  # a year like 2019
+            continue
+        kept.append(tok)
+    return ' '.join(kept).strip()
+
+
+def _to_standard(base):
+    """Normalize fancy / accented / full-width characters to standard ASCII."""
+    norm = unicodedata.normalize('NFKD', base)
+    return norm.encode('ascii', 'ignore').decode('ascii').strip()
+
+
+def _title_case(base):
+    return re.sub(r'\b\w', lambda m: m.group().upper(), base.lower())
+
+
+def _camel_case(base):
+    words = [w for w in re.split(r'[\s_\-]+', base) if w]
+    return ''.join(w[:1].upper() + w[1:].lower() for w in words)
 
 
 def apply_operation(path, operation):
@@ -205,13 +270,7 @@ def apply_operation(path, operation):
 
     if operation == 'delete_long':
         return delete_long_files(path)
-    if operation == 'remove_special':
-        return _rename_within(path, lambda b, i: re.sub(r'[^\w\s.-]', '', b).strip())
-    if operation == 'replace_spaces':
-        return _rename_within(path, lambda b, i: re.sub(r'\s+', '_', b.strip()))
-    if operation == 'clean':
-        # Full clean: strip specials, collapse spaces/dashes to underscores.
-        return _rename_within(path, lambda b, i: os.path.splitext(sanitize_filename(b + '.x'))[0])
+
     if operation == 'number_prefix':
         files = _media_files(path)
         width = max(2, len(str(len(files))))
@@ -219,4 +278,21 @@ def apply_operation(path, operation):
             path,
             lambda b, i: f"{str(i + 1).zfill(width)}_{re.sub(r'^[0-9]+[_-]', '', b)}",
         )
+
+    rename_ops = {
+        'remove_special': lambda b, i: re.sub(r'[^\w\s.-]', '', b).strip(),
+        'replace_spaces': lambda b, i: re.sub(r'\s+', '_', b.strip()),
+        # Full clean: strip specials, collapse spaces/dashes to underscores.
+        'clean':          lambda b, i: os.path.splitext(sanitize_filename(b + '.x'))[0],
+        'truncate':       lambda b, i: b[:TRUNCATE_LEN].strip(),
+        'remove_filler':  lambda b, i: _remove_filler(b),
+        'standard_font':  lambda b, i: _to_standard(b),
+        'lower_case':     lambda b, i: b.lower(),
+        'upper_case':     lambda b, i: b.upper(),
+        'title_case':     lambda b, i: _title_case(b),
+        'camel_case':     lambda b, i: _camel_case(b),
+    }
+    if operation in rename_ops:
+        return _rename_within(path, rename_ops[operation])
+
     return {'status': 'error', 'message': f'Unknown operation: {operation}'}

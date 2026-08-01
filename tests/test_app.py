@@ -215,6 +215,40 @@ def test_operation_number_prefix(pl_root):
     assert sorted(os.listdir(p)) == ["01_alpha.mp3", "02_beta.mp3"]
 
 
+def test_operation_truncate(pl_root):
+    long_name = "This Is A Really Long Track Title That Exceeds The Limit.mp3"
+    p = _make_playlist(pl_root, "mix_playlist", [long_name, "short.mp3"])
+    assert pl.apply_operation(p, "truncate")["status"] == "success"
+    for f in os.listdir(p):
+        assert len(os.path.splitext(f)[0]) <= 35
+
+
+def test_operation_remove_filler(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist",
+                       ["Artist - Song (Official Music Video) [4K HD].mp3", "keep.mp3"])
+    pl.apply_operation(p, "remove_filler")
+    assert "Artist Song.mp3" in os.listdir(p)
+
+
+def test_rename_collision_gets_salt(pl_root):
+    # Two names that truncate to the same value must both survive (one salted).
+    p = _make_playlist(pl_root, "mix_playlist", ["A" * 40 + "1.mp3", "A" * 40 + "2.mp3"])
+    assert pl.apply_operation(p, "truncate")["status"] == "success"
+    assert len(os.listdir(p)) == 2
+
+
+def test_operation_standard_font(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist", ["Café Münster.mp3", "b.mp3"])
+    pl.apply_operation(p, "standard_font")
+    assert "Cafe Munster.mp3" in os.listdir(p)
+
+
+def test_operation_camel_case(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist", ["hello world.mp3", "keep me.mp3"])
+    pl.apply_operation(p, "camel_case")
+    assert "HelloWorld.mp3" in os.listdir(p)
+
+
 def test_operation_delete_long(pl_root, monkeypatch):
     p = _make_playlist(pl_root, "mix_playlist", ["short.mp3", "long.mp3"])
     monkeypatch.setattr(pl, "_duration", lambda path: 500 if os.path.basename(path) == "long.mp3" else 100)

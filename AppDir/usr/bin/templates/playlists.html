@@ -19,8 +19,14 @@
     .pl-actions { display: flex; gap: .4rem; }
     .pl-actions .btn { font-size: .8rem; }
 
-    .ops-bar { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 1rem; }
+    .ops-group-label {
+        color: #8b949e; font-size: .72rem; text-transform: uppercase;
+        letter-spacing: .5px; margin: .25rem 0 .3rem;
+    }
+    .ops-bar { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .75rem; }
     .ops-bar .btn { font-size: .8rem; }
+    /* Clear gap between the file operations and the playlist table */
+    .pl-divider { margin: 1.5rem 0; }
 
     .files-table th { cursor: pointer; user-select: none; white-space: nowrap; }
     .files-table th .arrow { opacity: .5; font-size: .75rem; }
@@ -60,6 +66,7 @@
             </button>
         </div>
 
+        <div class="ops-group-label">Cleanup</div>
         <div class="ops-bar">
             <button class="btn btn-outline-danger" data-op="delete_long">
                 <i class="bi bi-scissors"></i> Delete all long files (&gt;6 min)
@@ -69,10 +76,23 @@
             </button>
             <button class="btn btn-outline-light" data-op="remove_special">Remove special characters</button>
             <button class="btn btn-outline-light" data-op="replace_spaces">Replace spaces with underscores</button>
+            <button class="btn btn-outline-light" data-op="remove_filler">Remove filler words</button>
+            <button class="btn btn-outline-light" data-op="truncate">Truncate to 35</button>
+            <button class="btn btn-outline-light" data-op="standard_font">Standard font</button>
             <button class="btn btn-outline-light" data-op="number_prefix">Add number prefix</button>
         </div>
 
+        <div class="ops-group-label">Case</div>
+        <div class="ops-bar">
+            <button class="btn btn-outline-light" data-op="lower_case">lower case</button>
+            <button class="btn btn-outline-light" data-op="upper_case">UPPER CASE</button>
+            <button class="btn btn-outline-light" data-op="title_case">Title Case</button>
+            <button class="btn btn-outline-light" data-op="camel_case">CamelCase</button>
+        </div>
+
         <div id="pl-op-status" class="mb-2"></div>
+
+        <hr class="border-secondary pl-divider">
 
         <div class="table-responsive pl-scroll">
             <table class="table table-bordered border-secondary text-light files-table">

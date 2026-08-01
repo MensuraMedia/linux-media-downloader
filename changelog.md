@@ -27,3 +27,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-07-31T00:00:20 | Feature: Playlists manager (list, rename folder, sortable Length/Filename/Size table, bulk ops) with path-safety guards; 28 tests |
 | 2026-07-31T00:00:21 | Fix: playlist scan no longer walks into the home dir (only *_playlist folders contribute a parent root); regression test (29 total) |
 | 2026-07-31T00:00:22 | Docs: added DOCUMENTATION.md (full technical reference with tables); linked from README |
+| 2026-07-31T00:00:23 | Playlists: added file ops — remove filler words, truncate to 35, standard-font (ASCII), lower/UPPER/Title/Camel case |
+| 2026-07-31T00:00:24 | Playlists: rename collisions now get a 4-char salt (no longer skipped); grouped ops UI with a gap before the table; 34 tests |
