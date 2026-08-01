@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .pl-wrap { max-width: 960px; margin: 0 auto; }
+    .pl-card {
+        display: flex; align-items: center; gap: 1rem;
+        background: #2a2f34; border: 1px solid #3a4046; border-radius: 10px;
+        padding: .75rem 1rem; margin-bottom: .6rem;
+    }
+    .pl-card:hover { background: #323841; }
+    .pl-card .pl-icon { font-size: 1.6rem; color: #0d6efd; }
+    .pl-card .pl-info { flex: 1 1 auto; min-width: 0; }
+    .pl-card .pl-name {
+        font-weight: 600; color: #fff; margin: 0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pl-card .pl-sub { color: #8b949e; font-size: .8rem; }
+    .pl-actions { display: flex; gap: .4rem; }
+    .pl-actions .btn { font-size: .8rem; }
+
+    .ops-bar { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 1rem; }
+    .ops-bar .btn { font-size: .8rem; }
+
+    .files-table th { cursor: pointer; user-select: none; white-space: nowrap; }
+    .files-table th .arrow { opacity: .5; font-size: .75rem; }
+    .files-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .files-table td.name { word-break: break-all; }
+    .pl-empty { text-align: center; color: #8b949e; padding: 3.5rem 1rem; }
+    .pl-scroll { max-height: calc(100vh - 320px); overflow-y: auto; }
+    .pl-scroll::-webkit-scrollbar { width: 10px; }
+    .pl-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pl-wrap">
+    <h1 class="display-6 fw-bold mb-4 text-center">Playlists</h1>
+
+    <!-- LIST VIEW -->
+    <div id="pl-list-view">
+        <div class="d-flex align-items-center mb-2">
+            <div class="text-muted small" id="pl-count">Loading…</div>
+            <button class="btn btn-outline-secondary btn-sm ms-auto" id="pl-refresh">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div id="pl-list"></div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="pl-detail-view" style="display:none;">
+        <div class="d-flex align-items-center mb-3">
+            <button class="btn btn-outline-secondary btn-sm" id="pl-back">
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+            <h4 class="mb-0 ms-3 text-truncate" id="pl-detail-name"></h4>
+            <button class="btn btn-outline-light btn-sm ms-2" id="pl-rename-2" title="Rename playlist">
+                <i class="bi bi-pencil"></i>
+            </button>
+        </div>
+
+        <div class="ops-bar">
+            <button class="btn btn-outline-danger" data-op="delete_long">
+                <i class="bi bi-scissors"></i> Delete all long files (&gt;6 min)
+            </button>
+            <button class="btn btn-outline-info" data-op="clean">
+                <i class="bi bi-magic"></i> Clean up file names
+            </button>
+            <button class="btn btn-outline-light" data-op="remove_special">Remove special characters</button>
+            <button class="btn btn-outline-light" data-op="replace_spaces">Replace spaces with underscores</button>
+            <button class="btn btn-outline-light" data-op="number_prefix">Add number prefix</button>
+        </div>
+
+        <div id="pl-op-status" class="mb-2"></div>
+
+        <div class="table-responsive pl-scroll">
+            <table class="table table-bordered border-secondary text-light files-table">
+                <thead>
+                    <tr>
+                        <th data-sort="duration">Length <span class="arrow"></span></th>
+                        <th data-sort="filename">Filename <span class="arrow"></span></th>
+                        <th data-sort="size">Size <span class="arrow"></span></th>
+                    </tr>
+                </thead>
+                <tbody id="pl-files-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        let currentPath = null;
+        let files = [];
+        let sortKey = 'filename';
+        let sortDir = 1;
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function fmtBytes(b) {
+            if (!b || b < 1) return '0 B';
+            const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(b) / Math.log(1024));
+            return (b / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + u[i];
+        }
+        function fmtDur(sec) {
+            if (sec == null) return '—';
+            sec = Math.round(sec);
+            const pad = (n) => String(n).padStart(2, '0');
+            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+            return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+        }
+
+        // ── List view ─────────────────────────────────────────────────────────
+        function loadList() {
+            document.getElementById('pl-count').textContent = 'Loading…';
+            fetch('/api/playlists').then(r => r.json()).then(list => {
+                const el = document.getElementById('pl-list');
+                document.getElementById('pl-count').textContent =
+                    list.length + (list.length === 1 ? ' playlist' : ' playlists');
+                if (!list.length) {
+                    el.innerHTML = '<div class="pl-empty"><i class="bi bi-collection-play" style="font-size:2.5rem;"></i>'
+                        + '<p class="mt-2">No playlists found yet. Download a full playlist to see it here.</p></div>';
+                    return;
+                }
+                el.innerHTML = list.map(p => `
+                    <div class="pl-card">
+                        <span class="pl-icon"><i class="bi bi-collection-play-fill"></i></span>
+                        <div class="pl-info">
+                            <p class="pl-name">${esc(p.name)}</p>
+                            <div class="pl-sub">${p.file_count} files • ${fmtBytes(p.total_size)}</div>
+                        </div>
+                        <div class="pl-actions">
+                            <button class="btn btn-outline-primary btn-sm open-pl"
+                                    data-path="${esc(p.path)}" data-name="${esc(p.name)}">
+                                <i class="bi bi-folder2-open"></i> Open
+                            </button>
+                            <button class="btn btn-outline-light btn-sm rename-pl"
+                                    data-path="${esc(p.path)}" data-name="${esc(p.name)}">
+                                <i class="bi bi-pencil"></i> Rename
+                            </button>
+                        </div>
+                    </div>`).join('');
+            }).catch(() => {
+                document.getElementById('pl-count').textContent = 'Failed to load playlists.';
+            });
+        }
+
+        function renamePlaylist(path, name, thenOpenNew) {
+            const newName = prompt('Rename playlist folder:', name);
+            if (newName == null || !newName.trim() || newName === name) return;
+            fetch('/api/rename-playlist', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: path, new_name: newName.trim() }),
+            }).then(r => r.json()).then(res => {
+                if (res.status !== 'success') { alert(res.message || 'Rename failed'); return; }
+                if (thenOpenNew) { openPlaylist(res.path, res.name); }
+                loadList();
+            });
+        }
+
+        // ── Detail view ───────────────────────────────────────────────────────
+        function openPlaylist(path, name) {
+            currentPath = path;
+            document.getElementById('pl-detail-name').textContent = name;
+            document.getElementById('pl-list-view').style.display = 'none';
+            document.getElementById('pl-detail-view').style.display = 'block';
+            loadFiles();
+        }
+        function backToList() {
+            document.getElementById('pl-detail-view').style.display = 'none';
+            document.getElementById('pl-list-view').style.display = 'block';
+            currentPath = null;
+            loadList();
+        }
+        function loadFiles() {
+            document.getElementById('pl-files-body').innerHTML =
+                '<tr><td colspan="3" class="text-center text-muted py-3">Reading files…</td></tr>';
+            fetch('/api/playlist-files', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: currentPath }),
+            }).then(r => r.json()).then(res => {
+                files = res.files || [];
+                renderFiles();
+            }).catch(() => {
+                document.getElementById('pl-files-body').innerHTML =
+                    '<tr><td colspan="3" class="text-center text-danger py-3">Failed to read files.</td></tr>';
+            });
+        }
+        function renderFiles() {
+            const sorted = files.slice().sort((a, b) => {
+                let av = a[sortKey], bv = b[sortKey];
+                if (sortKey === 'filename') { av = (av || '').toLowerCase(); bv = (bv || '').toLowerCase(); }
+                else { av = av == null ? -1 : av; bv = bv == null ? -1 : bv; }
+                return av < bv ? -sortDir : av > bv ? sortDir : 0;
+            });
+            const body = document.getElementById('pl-files-body');
+            if (!sorted.length) {
+                body.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">No media files.</td></tr>';
+            } else {
+                body.innerHTML = sorted.map(f => `
+                    <tr>
+                        <td class="num">${fmtDur(f.duration)}</td>
+                        <td class="name">${esc(f.filename)}</td>
+                        <td class="num">${fmtBytes(f.size)}</td>
+                    </tr>`).join('');
+            }
+            document.querySelectorAll('.files-table th').forEach(th => {
+                const a = th.querySelector('.arrow');
+                a.textContent = th.getAttribute('data-sort') === sortKey ? (sortDir > 0 ? '▲' : '▼') : '';
+            });
+        }
+        function runOperation(op, label) {
+            let msg = `Apply "${label}" to all files in this playlist?`;
+            if (op === 'delete_long') msg = 'Delete ALL files longer than 6 minutes? This cannot be undone.';
+            if (!confirm(msg)) return;
+            const status = document.getElementById('pl-op-status');
+            status.innerHTML = '<span class="text-info">Working…</span>';
+            fetch('/api/playlist-operation', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: currentPath, operation: op }),
+            }).then(r => r.json()).then(res => {
+                if (res.status !== 'success') {
+                    status.innerHTML = `<span class="text-danger">${esc(res.message || 'Operation failed')}</span>`;
+                    return;
+                }
+                const n = res.deleted != null ? `${res.deleted} deleted` : `${res.renamed} renamed`;
+                status.innerHTML = `<span class="text-success">Done — ${n}.</span>`;
+                loadFiles();
+            }).catch(() => {
+                status.innerHTML = '<span class="text-danger">Operation failed.</span>';
+            });
+        }
+
+        // ── Wiring ────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function () {
+            loadList();
+            document.getElementById('pl-refresh').addEventListener('click', loadList);
+            document.getElementById('pl-back').addEventListener('click', backToList);
+            document.getElementById('pl-rename-2').addEventListener('click', function () {
+                renamePlaylist(currentPath, document.getElementById('pl-detail-name').textContent, true);
+            });
+
+            document.getElementById('pl-list').addEventListener('click', function (e) {
+                const open = e.target.closest('.open-pl');
+                const ren = e.target.closest('.rename-pl');
+                if (open) openPlaylist(open.getAttribute('data-path'), open.getAttribute('data-name'));
+                else if (ren) renamePlaylist(ren.getAttribute('data-path'), ren.getAttribute('data-name'), false);
+            });
+
+            document.querySelectorAll('.ops-bar .btn').forEach(btn => {
+                btn.addEventListener('click', () => runOperation(btn.getAttribute('data-op'), btn.textContent.trim()));
+            });
+
+            document.querySelectorAll('.files-table th').forEach(th => {
+                th.addEventListener('click', function () {
+                    const k = th.getAttribute('data-sort');
+                    if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+                    renderFiles();
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -23,6 +23,11 @@ def links():
     """Render the links history page"""
     return render_template('links.html')
 
+@ui_routes.route('/playlists')
+def playlists():
+    """Render the playlists management page"""
+    return render_template('playlists.html')
+
 @ui_routes.route('/information')
 def information():
     """Render the information page"""

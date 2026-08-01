@@ -180,7 +180,7 @@ class DownloadProgress:
             })
 
 
-def download_media(url, output_dir, download_type='audio', playlist_mode='single'):
+def download_media(url, output_dir, download_type='audio', playlist_mode='single', skip_long=False):
     """Download media from YouTube"""
     reset_cancel()
 
@@ -258,7 +258,17 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
         'geo_bypass': True,
         'extractor_retries': 5,
     }
-    
+
+    # Optional filter: skip any track longer than 6 minutes (playlists)
+    if skip_long:
+        def _skip_long_filter(info_dict, *, incomplete=False):
+            dur = info_dict.get('duration')
+            if dur is not None and dur > 360:
+                return f"Skipping long file (>6 min): {info_dict.get('title', '')}"
+            return None
+        ydl_opts['match_filter'] = _skip_long_filter
+
+
     if download_type == 'audio':
         # For audio, set specific options to only download and process audio
         audio_output_template = os.path.join(output_dir, '%(title)s.%(ext)s')
@@ -384,11 +394,11 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
     # Record the final outcome against the links-history entry (all exit paths).
     update_last_link_history(status=current_download['status'])
 
-def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single'):
+def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single', skip_long=False):
     """Start the download process in a separate thread"""
     download_thread = threading.Thread(
         target=download_media,
-        args=(url, output_dir, download_type, playlist_mode)
+        args=(url, output_dir, download_type, playlist_mode, skip_long)
     )
     download_thread.daemon = True
     download_thread.start()

@@ -3,13 +3,25 @@
 # Offline unit + route tests for Linux Media Downloader.
 # These require no network and must never trigger a real download.
 
+import os
+
 import pytest
 import yt_dlp
 
 import modules.config.settings as settings
 from modules.utils.file_utils import sanitize_filename
 from modules.download.media import DownloadProgress
+from modules import playlists as pl
 import browser_app  # provides a Flask app with both blueprints registered
+
+
+def _make_playlist(tmp_path, folder, names):
+    """Create a folder with media files; return its path."""
+    d = tmp_path / folder
+    d.mkdir()
+    for n in names:
+        (d / n).write_bytes(b"x")
+    return str(d)
 
 
 # ── filename sanitization ────────────────────────────────────────────────────
@@ -153,3 +165,71 @@ def test_links_page_renders(client):
     r = client.get("/links")
     assert r.status_code == 200
     assert b"Links History" in r.data
+
+
+# ── playlists manager ────────────────────────────────────────────────────────
+
+@pytest.fixture
+def pl_root(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "default_download_path", str(tmp_path))
+    monkeypatch.setattr(settings, "download_history", [])
+    return tmp_path
+
+
+def test_list_playlists_only_multi_file(pl_root):
+    _make_playlist(pl_root, "My Mix_playlist", ["a.mp3", "b.mp3"])
+    _make_playlist(pl_root, "solo", ["only.mp3"])  # single file -> not a playlist
+    names = [p["name"] for p in pl.list_playlists()]
+    assert "My Mix_playlist" in names
+    assert "solo" not in names
+
+
+def test_rename_playlist(pl_root):
+    p = _make_playlist(pl_root, "Old Name", ["a.mp3", "b.mp3"])
+    res = pl.rename_playlist(p, "New Name")
+    assert res["status"] == "success"
+    assert os.path.isdir(str(pl_root / "New Name"))
+
+
+def test_rename_rejects_outside_path(pl_root):
+    # Path traversal guard: a path outside the download roots must be refused.
+    assert pl.rename_playlist("/etc", "hacked")["status"] == "error"
+
+
+def test_operation_replace_spaces(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist", ["a b c.mp3", "d e.mp3"])
+    res = pl.apply_operation(p, "replace_spaces")
+    assert res["status"] == "success" and res["renamed"] == 2
+    assert sorted(os.listdir(p)) == ["a_b_c.mp3", "d_e.mp3"]
+
+
+def test_operation_remove_special(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist", ["a*b?.mp3", "c!.mp3"])
+    assert pl.apply_operation(p, "remove_special")["status"] == "success"
+    assert sorted(os.listdir(p)) == ["ab.mp3", "c.mp3"]
+
+
+def test_operation_number_prefix(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist", ["alpha.mp3", "beta.mp3"])
+    assert pl.apply_operation(p, "number_prefix")["status"] == "success"
+    assert sorted(os.listdir(p)) == ["01_alpha.mp3", "02_beta.mp3"]
+
+
+def test_operation_delete_long(pl_root, monkeypatch):
+    p = _make_playlist(pl_root, "mix_playlist", ["short.mp3", "long.mp3"])
+    monkeypatch.setattr(pl, "_duration", lambda path: 500 if os.path.basename(path) == "long.mp3" else 100)
+    res = pl.apply_operation(p, "delete_long")
+    assert res["status"] == "success" and res["deleted"] == 1
+    assert sorted(os.listdir(p)) == ["short.mp3"]
+
+
+def test_playlists_api(pl_root, client):
+    _make_playlist(pl_root, "api_mix_playlist", ["a.mp3", "b.mp3"])
+    data = client.get("/api/playlists").get_json()
+    assert any(p["name"] == "api_mix_playlist" for p in data)
+
+
+def test_playlists_page_renders(client):
+    r = client.get("/playlists")
+    assert r.status_code == 200
+    assert b"Playlists" in r.data

@@ -43,6 +43,10 @@
                                 <input class="form-check-input" type="radio" name="playlist-mode" id="complete-playlist" value="playlist">
                                 <label class="form-check-label" for="complete-playlist" id="complete-playlist-label">Full Playlist</label>
                             </div>
+                            <div class="form-check mt-2" id="skip-long-option" style="display: none;">
+                                <input class="form-check-input" type="checkbox" id="skip-long-check">
+                                <label class="form-check-label" for="skip-long-check">Skip long files (over 6 min)</label>
+                            </div>
                         </div>
                     </div>
                     
@@ -258,6 +262,7 @@
                 $('#link-loader').css('display', 'none');
                 // Hide "Full Playlist" option
                 $('#full-playlist-option').hide();
+                $('#skip-long-option').hide();
                 // Ensure Single Video is selected
                 $('#single-video').prop('checked', true);
             }
@@ -302,12 +307,15 @@
                     if (data.is_playlist) {
                         // Show "Full Playlist" option
                         $('#full-playlist-option').show();
-                        
+                        // Show the "Skip long files" filter for playlists
+                        $('#skip-long-option').show();
+
                         // Update the text for the playlist option
                         $('#complete-playlist-label').text('Full Playlist (' + data.entries + ' videos)');
                     } else {
                         // Hide "Full Playlist" option for single videos
                         $('#full-playlist-option').hide();
+                        $('#skip-long-option').hide();
                         // Ensure Single Video is selected
                         $('#single-video').prop('checked', true);
                     }
@@ -334,6 +342,7 @@
                     $('#link-loader').css('display', 'none');
                     // Hide "Full Playlist" option on error
                     $('#full-playlist-option').hide();
+                    $('#skip-long-option').hide();
                     // Ensure Single Video is selected
                     $('#single-video').prop('checked', true);
                 }
@@ -489,7 +498,8 @@
                     url: url,
                     output_dir: folderPath,
                     download_type: downloadType,
-                    playlist_mode: playlistMode
+                    playlist_mode: playlistMode,
+                    skip_long: $('#skip-long-check').is(':checked')
                 }),
             })
             .then(response => response.json())

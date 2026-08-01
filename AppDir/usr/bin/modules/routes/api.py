@@ -40,7 +40,8 @@ def start_download():
     output_dir = data.get('output_dir', default_download_path)
     download_type = data.get('download_type', 'audio')
     playlist_mode = data.get('playlist_mode', 'single')
-    
+    skip_long = bool(data.get('skip_long', False))
+
     if not url:
         return jsonify({'error': 'No URL provided'})
 
@@ -49,7 +50,7 @@ def start_download():
     add_link_history(url, download_type, playlist_mode)
 
     # Start download in a separate thread
-    start_download_thread(url, output_dir, download_type, playlist_mode)
+    start_download_thread(url, output_dir, download_type, playlist_mode, skip_long)
 
     return jsonify({'status': 'started'})
 
@@ -103,6 +104,40 @@ def clear_links_history():
     links_history.clear()
     save_links_history()
     return jsonify({'status': 'cleared'})
+
+
+@api_routes.route('/api/playlists')
+def playlists_route():
+    """List previously-downloaded playlists (folders with more than one track)."""
+    from modules import playlists
+    return jsonify(playlists.list_playlists())
+
+
+@api_routes.route('/api/playlist-files', methods=['POST'])
+def playlist_files_route():
+    """List the media files in a playlist folder (length / name / size)."""
+    from modules import playlists
+    path = (request.get_json() or {}).get('path', '')
+    files = playlists.list_playlist_files(path)
+    if files is None:
+        return jsonify({'error': 'Invalid or unknown playlist path'}), 400
+    return jsonify({'path': path, 'files': files})
+
+
+@api_routes.route('/api/rename-playlist', methods=['POST'])
+def rename_playlist_route():
+    """Rename a playlist folder on disk."""
+    from modules import playlists
+    data = request.get_json() or {}
+    return jsonify(playlists.rename_playlist(data.get('path', ''), data.get('new_name', '')))
+
+
+@api_routes.route('/api/playlist-operation', methods=['POST'])
+def playlist_operation_route():
+    """Apply a bulk file operation to a playlist folder."""
+    from modules import playlists
+    data = request.get_json() or {}
+    return jsonify(playlists.apply_operation(data.get('path', ''), data.get('operation', '')))
 
 
 @api_routes.route('/api/open-folder', methods=['POST'])

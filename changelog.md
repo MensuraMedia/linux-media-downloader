@@ -22,3 +22,6 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-07-31T00:00:15 | Stopped tracking runtime data/*.json (history regenerated at runtime); added tests (19 total) |
 | 2026-07-31T00:00:16 | UI: current-file bar moved below the blue track title (centered, fixed); removed the 'processing' label |
 | 2026-07-31T00:00:17 | UI: replaced the redundant table 'Progress' column with a 'Length' (track duration) column; backend now exposes per-track duration |
+| 2026-07-31T00:00:18 | Feature: 'Skip long files' filter for playlists (yt-dlp match_filter skips tracks > 6 min) |
+| 2026-07-31T00:00:19 | Sidebar: renamed 'Backups' to 'History'; added 'Playlists' tab |
+| 2026-07-31T00:00:20 | Feature: Playlists manager (list, rename folder, sortable Length/Filename/Size table, bulk ops) with path-safety guards; 28 tests |

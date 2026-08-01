@@ -52,6 +52,13 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 - **Download history** — the last 100 downloads persisted to `data/download_history.json`.
 - **Links history** — a scrollable, YouTube-style record of every link you've submitted
   (thumbnails, badges, search, open/copy/re-use), on its own **Links** tab.
+- **Skip long files** — when a playlist is detected, optionally skip any track over
+  6 minutes so they're never downloaded.
+- **Playlists manager** — a **Playlists** tab listing every downloaded playlist (folders
+  with more than one track). Rename a playlist (renames its folder), then drill in to a
+  sortable table (Length / Filename / Size) with bulk operations: delete all long files
+  (>6 min), clean up names, remove special characters, replace spaces with underscores,
+  and add a number prefix.
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.
@@ -193,9 +200,15 @@ Flask binds only to `127.0.0.1` (localhost); the app is not exposed to your netw
 | `GET`  | `/api/download-status` | Poll current download status/progress |
 | `GET`  | `/api/links-history` | Return submitted-links history, newest first |
 | `POST` | `/api/clear-links-history` | Clear the links history |
+| `GET`  | `/api/playlists` | List downloaded playlists (folders with >1 track) |
+| `POST` | `/api/playlist-files` | List a playlist's files (length / name / size) |
+| `POST` | `/api/rename-playlist` | Rename a playlist folder |
+| `POST` | `/api/playlist-operation` | Bulk file op (delete_long / clean / remove_special / replace_spaces / number_prefix) |
 | `POST` | `/api/open-folder` | Open a folder in the system file manager |
 
-Pages: `/` (Home), `/backups` (Backups), `/links` (Links History), `/about`.
+`/api/download` also accepts `skip_long: true` to skip tracks over 6 minutes.
+
+Pages: `/` (Home), `/backups` (History), `/playlists` (Playlists), `/links` (Links), `/about`.
 
 ---
 
