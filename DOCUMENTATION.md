@@ -161,6 +161,7 @@ Key fields in `current_download`:
 | `/` | `index.html` | Home — submit a link, pick options, watch progress |
 | `/backups` | `backups.html` | **History** of completed downloads |
 | `/playlists` | `playlists.html` | Playlists manager |
+| `/player` | `player.html` | Audio/video player + curation |
 | `/links` | `links.html` | Links history (submitted URLs) |
 | `/information`, `/about` | — | Static info pages |
 
@@ -183,6 +184,10 @@ Key fields in `current_download`:
 | `POST` | `/api/playlist-redo` | — | Replay the last undone operation |
 | `POST` | `/api/playlist-empty-trash` | `{path}` | Purge the `.trash` folder `{status, purged}` |
 | `POST` | `/api/playlist-color` | `{path, color}` | Set the badge colour `{status, color}` |
+| `GET`  | `/api/all-media` | — | Every downloaded media file `[{name, path, folder, size}]` (Player) |
+| `GET`  | `/api/media?path=…` | — | Stream a media file (supports HTTP range/seeking) |
+| `POST` | `/api/delete-media` | `{path}` | Move a single file to its folder's `.trash` |
+| `POST` | `/api/add-to-folder` | `{path, folder}` | Copy a file into a (new) curation folder |
 | `POST` | `/api/open-folder` | `{path}` | `{status}` |
 
 **Download parameters**
@@ -314,7 +319,24 @@ memorable.
 **Trash.** `delete_long` moves files to `.trash`; the **Empty trash** button
 (`/api/playlist-empty-trash`) permanently purges them and reports the count.
 
-### 7.7 Filename sanitization
+### 7.7 Player & curation
+
+The **Player** tab (`/player`) lists every downloaded media file (`/api/all-media`, grouped
+by folder, searchable). Selecting a track streams it via `/api/media?path=…` into a native
+`<audio>`/`<video controls>` element — giving play/pause, a **seek bar (fast-forward)**, and
+**volume** for free — plus **skip ±10s**, prev/next, and **auto-next**. Streaming uses
+`send_file(conditional=True)` so HTTP range requests (seeking) work.
+
+Curation while listening:
+- **Delete** — moves the current file to its folder's `.trash` (`/api/delete-media`) and
+  advances to the next track.
+- **Add to folder** — copies the current file into a named folder under the download root
+  (`/api/add-to-folder`); keep the same folder name to build a new curated playlist track by
+  track without interrupting playback.
+
+All three media endpoints validate the path with `is_safe_path` (confined to download roots).
+
+### 7.8 Filename sanitization
 
 `sanitize_filename()` (used on downloads and the `clean` operation):
 

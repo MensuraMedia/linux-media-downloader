@@ -71,6 +71,10 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 - **Playlist download controls** — a single scope choice (Single Video / All (N) / First
   10 / 20 / 30) plus a **Skip long files** filter, in clean columns. Playlist-only options
   stay visible but grayed-out until a playlist is detected.
+- **Player & curation** — a **Player** tab with an audio/video player (play, seek/fast-
+  forward, volume, skip ±10s, auto-next) over a searchable list of every downloaded file.
+  Delete a file you don't want, or **add it to a new folder** as you listen to build a
+  curated playlist on the fly.
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.
