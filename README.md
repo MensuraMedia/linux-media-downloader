@@ -62,7 +62,10 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
   (>6 min), clean up names, remove special characters, replace spaces with underscores,
   remove filler words (music/mix/remaster/live/4k/hd/months/…), truncate to 35 chars,
   normalize to a standard font (ASCII), change case (lower/UPPER/Title/Camel), and add a
-  number prefix. Name collisions are resolved with a 4-character salt.
+  number prefix. Filler-word removal works even inside camelCase names
+  (`SongOfficialVideo` → `Song`). Name collisions are resolved with a 4-character salt, and
+  every operation is **undoable** (delete moves files to `.trash`). Playlists are numbered
+  `001`, `002`, … in the list.
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.

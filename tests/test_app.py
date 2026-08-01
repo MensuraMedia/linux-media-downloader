@@ -173,6 +173,8 @@ def test_links_page_renders(client):
 def pl_root(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "default_download_path", str(tmp_path))
     monkeypatch.setattr(settings, "download_history", [])
+    pl._undo_stack.clear()
+    pl._redo_stack.clear()
     return tmp_path
 
 
@@ -254,7 +256,28 @@ def test_operation_delete_long(pl_root, monkeypatch):
     monkeypatch.setattr(pl, "_duration", lambda path: 500 if os.path.basename(path) == "long.mp3" else 100)
     res = pl.apply_operation(p, "delete_long")
     assert res["status"] == "success" and res["deleted"] == 1
-    assert sorted(os.listdir(p)) == ["short.mp3"]
+    remaining = [f for f in os.listdir(p) if f != ".trash"]
+    assert remaining == ["short.mp3"]
+    # Undo restores the "deleted" file
+    assert pl.undo_last()["status"] == "success"
+    assert "long.mp3" in os.listdir(p)
+
+
+def test_remove_filler_camelcase(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist",
+                       ["SongTitleOfficialVideo.mp3", "keep.mp3"])
+    pl.apply_operation(p, "remove_filler")
+    assert "SongTitle.mp3" in os.listdir(p)
+
+
+def test_undo_redo_rename(pl_root):
+    p = _make_playlist(pl_root, "mix_playlist", ["a b.mp3", "c d.mp3"])
+    pl.apply_operation(p, "replace_spaces")
+    assert sorted(f for f in os.listdir(p) if f.endswith(".mp3")) == ["a_b.mp3", "c_d.mp3"]
+    assert pl.undo_last()["status"] == "success"
+    assert sorted(f for f in os.listdir(p) if f.endswith(".mp3")) == ["a b.mp3", "c d.mp3"]
+    assert pl.redo_last()["status"] == "success"
+    assert sorted(f for f in os.listdir(p) if f.endswith(".mp3")) == ["a_b.mp3", "c_d.mp3"]
 
 
 def test_playlists_api(pl_root, client):

@@ -178,7 +178,9 @@ Key fields in `current_download`:
 | `GET`  | `/api/playlists` | — | `[{name, path, file_count, total_size}]` |
 | `POST` | `/api/playlist-files` | `{path}` | `{path, files:[{filename, size, duration}]}` |
 | `POST` | `/api/rename-playlist` | `{path, new_name}` | `{status, path, name}` |
-| `POST` | `/api/playlist-operation` | `{path, operation}` — operation ∈ delete_long, clean, remove_special, replace_spaces, remove_filler, truncate, standard_font, number_prefix, lower_case, upper_case, title_case, camel_case | `{status, renamed \| deleted}` |
+| `POST` | `/api/playlist-operation` | `{path, operation}` — operation ∈ delete_long, clean, remove_special, replace_spaces, remove_filler, truncate, standard_font, number_prefix, lower_case, upper_case, title_case, camel_case | `{status, renamed \| deleted, can_undo, can_redo}` |
+| `POST` | `/api/playlist-undo` | — | Reverse the last operation `{status, changed, can_undo, can_redo}` |
+| `POST` | `/api/playlist-redo` | — | Replay the last undone operation |
 | `POST` | `/api/open-folder` | `{path}` | `{status}` |
 
 **Download parameters**
@@ -268,7 +270,7 @@ containing **more than one** media file:
 | `clean` | Full clean: strip specials, collapse spaces/dashes to underscores |
 | `remove_special` | Remove special characters |
 | `replace_spaces` | Replace spaces with underscores |
-| `remove_filler` | Drop clutter words (music, mix, remaster, live, 4k, hd, official, remix, cover, months, years, …) |
+| `remove_filler` | Drop clutter words — music, mix, remaster, live, 4k, hd, official, video, remix, cover, months, years, … — **even when glued together in camelCase** (`SongOfficialVideo` → `Song`) |
 | `truncate` | Truncate names to 35 characters |
 | `standard_font` | Normalize fancy / accented / full-width characters to standard ASCII |
 | `number_prefix` | Add a zero-padded `NN_` prefix (re-numbers) |
@@ -278,6 +280,13 @@ All rename operations preserve uniqueness: if two files would collide (e.g. afte
 truncation), a deterministic **4-character salt** is inserted before the extension rather
 than skipping the file. Renaming a playlist (`/api/rename-playlist`) renames the folder on
 disk.
+
+**Undo / Redo.** Every operation is reversible. Rename operations record their `(src, dst)`
+moves; `delete_long` moves files into a `.trash` subfolder instead of erasing them. The
+detail view's **Undo**/**Redo** buttons (`/api/playlist-undo`, `/api/playlist-redo`) reverse
+or replay the last operation. The undo/redo state is in memory and resets on restart.
+
+The playlist **list** view numbers each entry with a large `001`, `002`, … sequence badge.
 
 ### 7.7 Filename sanitization
 

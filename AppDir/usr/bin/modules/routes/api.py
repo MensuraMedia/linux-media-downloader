@@ -121,7 +121,7 @@ def playlist_files_route():
     files = playlists.list_playlist_files(path)
     if files is None:
         return jsonify({'error': 'Invalid or unknown playlist path'}), 400
-    return jsonify({'path': path, 'files': files})
+    return jsonify({'path': path, 'files': files, **playlists.stack_state()})
 
 
 @api_routes.route('/api/rename-playlist', methods=['POST'])
@@ -138,6 +138,20 @@ def playlist_operation_route():
     from modules import playlists
     data = request.get_json() or {}
     return jsonify(playlists.apply_operation(data.get('path', ''), data.get('operation', '')))
+
+
+@api_routes.route('/api/playlist-undo', methods=['POST'])
+def playlist_undo_route():
+    """Undo the most recent playlist file operation."""
+    from modules import playlists
+    return jsonify(playlists.undo_last())
+
+
+@api_routes.route('/api/playlist-redo', methods=['POST'])
+def playlist_redo_route():
+    """Redo the most recently undone playlist file operation."""
+    from modules import playlists
+    return jsonify(playlists.redo_last())
 
 
 @api_routes.route('/api/open-folder', methods=['POST'])

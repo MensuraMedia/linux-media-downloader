@@ -29,3 +29,6 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-07-31T00:00:22 | Docs: added DOCUMENTATION.md (full technical reference with tables); linked from README |
 | 2026-07-31T00:00:23 | Playlists: added file ops — remove filler words, truncate to 35, standard-font (ASCII), lower/UPPER/Title/Camel case |
 | 2026-07-31T00:00:24 | Playlists: rename collisions now get a 4-char salt (no longer skipped); grouped ops UI with a gap before the table; 34 tests |
+| 2026-08-01T09:00:00 | Playlists: filler-word removal now detects words inside camelCase (e.g. SongOfficialVideo -> Song) |
+| 2026-08-01T09:05:00 | Playlists: added Undo/Redo (rename ops reversible; delete_long moves to .trash); state via /api/playlist-undo,-redo |
+| 2026-08-01T09:10:00 | Playlists: large sequence badge (001, 002, …) on each list entry; 36 tests, live end-to-end verified |

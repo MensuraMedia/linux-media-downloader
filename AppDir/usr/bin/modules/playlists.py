@@ -178,20 +178,78 @@ def rename_playlist(path, new_name):
 
 
 def delete_long_files(path, max_seconds=LONG_SECONDS):
-    """Delete media files whose duration exceeds max_seconds."""
+    """Move media files longer than max_seconds into a .trash folder (undoable)."""
     if not _is_safe_path(path) or not os.path.isdir(path):
         return {'status': 'error', 'message': 'Invalid playlist path'}
-    deleted = 0
+    trash = os.path.join(path, '.trash')
+    moves = []
     for name in _media_files(path):
         fp = os.path.join(path, name)
         dur = _duration(fp)
         if dur is not None and dur > max_seconds:
+            os.makedirs(trash, exist_ok=True)
+            dst = os.path.join(trash, _unique_name(trash, name, name))
             try:
-                os.remove(fp)
-                deleted += 1
+                os.rename(fp, dst)
+                moves.append((fp, dst))
             except OSError:
                 pass
-    return {'status': 'success', 'deleted': deleted}
+    _record(moves)
+    return {'status': 'success', 'deleted': len(moves), **stack_state()}
+
+
+# ── Undo / redo ──────────────────────────────────────────────────────────────
+# Each recorded op is a list of (src, dst) moves that were performed. Undo
+# reverses them; redo replays them. State is in-memory (resets on restart).
+_undo_stack = []
+_redo_stack = []
+
+
+def stack_state():
+    return {'can_undo': bool(_undo_stack), 'can_redo': bool(_redo_stack)}
+
+
+def _record(moves):
+    if moves:
+        _undo_stack.append(moves)
+        _redo_stack.clear()
+
+
+def _safe_move(src, dst):
+    if not (_is_safe_path(src) and _is_safe_path(os.path.dirname(dst))):
+        return False
+    if os.path.exists(dst):
+        return False
+    try:
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        os.rename(src, dst)
+        return True
+    except OSError:
+        return False
+
+
+def _apply_moves(moves):
+    return sum(1 for src, dst in moves if _safe_move(src, dst))
+
+
+def undo_last():
+    """Reverse the most recent operation."""
+    if not _undo_stack:
+        return {'status': 'noop', **stack_state()}
+    moves = _undo_stack.pop()
+    changed = _apply_moves([(dst, src) for (src, dst) in reversed(moves)])
+    _redo_stack.append(moves)
+    return {'status': 'success', 'changed': changed, **stack_state()}
+
+
+def redo_last():
+    """Replay the most recently undone operation."""
+    if not _redo_stack:
+        return {'status': 'noop', **stack_state()}
+    moves = _redo_stack.pop()
+    changed = _apply_moves(moves)
+    _undo_stack.append(moves)
+    return {'status': 'success', 'changed': changed, **stack_state()}
 
 
 def _unique_name(path, new_name, original):
@@ -216,7 +274,7 @@ def _rename_within(path, mapper):
     """
     if not _is_safe_path(path) or not os.path.isdir(path):
         return {'status': 'error', 'message': 'Invalid playlist path'}
-    renamed = 0
+    moves = []
     for idx, name in enumerate(_media_files(path)):
         base, ext = os.path.splitext(name)
         new_base = (mapper(base, idx) or '').strip() or base
@@ -224,28 +282,47 @@ def _rename_within(path, mapper):
         if new_name == name:
             continue
         new_name = _unique_name(path, new_name, name)
+        src = os.path.join(path, name)
+        dst = os.path.join(path, new_name)
         try:
-            os.rename(os.path.join(path, name), os.path.join(path, new_name))
-            renamed += 1
+            os.rename(src, dst)
+            moves.append((src, dst))
         except OSError:
             pass
-    return {'status': 'success', 'renamed': renamed}
+    _record(moves)
+    return {'status': 'success', 'renamed': len(moves), **stack_state()}
+
+
+def _split_camel(token):
+    """Split a CamelCase / PascalCase token into its words (e.g. OfficialVideo)."""
+    parts = re.findall(r'[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|\d+', token)
+    return parts or [token]
+
+
+def _is_filler_word(word):
+    low = word.lower()
+    return low in FILLER_WORDS or bool(re.fullmatch(r'(?:19|20)\d{2}', low))
 
 
 def _remove_filler(base):
-    """Drop clutter words (filler + years) and bracket noise from a name."""
-    tokens = re.split(r'[\s_\-\[\]\(\)\{\}]+', base)
-    kept = []
-    for tok in tokens:
-        word = re.sub(r'[^\w]', '', tok).lower()
-        if not word:
+    """Drop clutter words (filler + years) — even when glued together in camelCase.
+
+    e.g. "Artist - Song (Official Music Video) [4K HD]" -> "Artist Song"
+         "SongTitleOfficialVideo"                       -> "SongTitle"
+    """
+    out = []
+    for tok in re.split(r'[\s_\-\[\]\(\)\{\}]+', base):
+        if not tok:
             continue
-        if word in FILLER_WORDS:
+        # Whole-token match first so units like "4K"/"HD" and years are caught
+        # before camelCase splitting breaks them apart.
+        whole = re.sub(r'[^\w]', '', tok)
+        if whole and _is_filler_word(whole):
             continue
-        if re.fullmatch(r'(?:19|20)\d{2}', word):  # a year like 2019
-            continue
-        kept.append(tok)
-    return ' '.join(kept).strip()
+        kept = [s for s in _split_camel(tok) if not _is_filler_word(s)]
+        if kept:
+            out.append(''.join(kept))
+    return ' '.join(out).strip()
 
 
 def _to_standard(base):
