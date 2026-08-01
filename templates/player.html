@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .player-wrap { max-width: 1100px; margin: 0 auto; }
+    .player-panel {
+        background: #2a2f34; border: 1px solid #3a4046; border-radius: 12px;
+        padding: 1rem; position: sticky; top: 1rem;
+    }
+    .now-playing { font-weight: 600; color: #0d6efd; word-break: break-all; min-height: 1.4em; }
+    .now-folder { color: #8b949e; font-size: .8rem; margin-bottom: .75rem; }
+    #player-video { width: 100%; max-height: 340px; background: #000; border-radius: 8px; }
+    #player-audio { width: 100%; }
+    .media-holder { min-height: 54px; }
+    .transport { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin: .75rem 0; }
+    .curate-bar {
+        display: flex; gap: .4rem; align-items: center; flex-wrap: wrap;
+        border-top: 1px solid #3a4046; padding-top: .75rem; margin-top: .5rem;
+    }
+    .curate-bar input { max-width: 220px; }
+    .file-list-scroll {
+        max-height: 70vh; overflow-y: auto; border: 1px solid #3a4046; border-radius: 8px;
+    }
+    .file-list-scroll::-webkit-scrollbar { width: 10px; }
+    .file-list-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 6px; }
+    .file-row {
+        display: flex; align-items: center; gap: .6rem;
+        padding: .5rem .75rem; border-bottom: 1px solid #333; cursor: pointer;
+    }
+    .file-row:hover { background: #323841; }
+    .file-row.active { background: #0d3b66; }
+    .file-row .fr-icon { color: #6c757d; flex-shrink: 0; }
+    .file-row .fr-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-row .fr-meta { color: #8b949e; font-size: .75rem; flex-shrink: 0; }
+    .file-folder-head {
+        color: #8b949e; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px;
+        padding: .5rem .75rem .25rem; position: sticky; top: 0; background: #212529;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 player-wrap">
+    <h1 class="display-6 fw-bold mb-4 text-center">Player</h1>
+    <div class="row g-3">
+        <!-- Player + curation -->
+        <div class="col-md-5">
+            <div class="player-panel">
+                <div class="now-playing" id="now-playing">Select a track to play</div>
+                <div class="now-folder" id="now-folder"></div>
+                <div class="media-holder">
+                    <video id="player-video" controls style="display:none;"></video>
+                    <audio id="player-audio" controls style="display:none;"></audio>
+                </div>
+                <div class="transport">
+                    <button class="btn btn-outline-light btn-sm" id="skip-back" title="Back 10s"><i class="bi bi-skip-backward"></i> 10s</button>
+                    <button class="btn btn-outline-light btn-sm" id="skip-fwd" title="Forward 10s">10s <i class="bi bi-skip-forward"></i></button>
+                    <button class="btn btn-outline-light btn-sm" id="prev-track" title="Previous"><i class="bi bi-chevron-left"></i></button>
+                    <button class="btn btn-outline-light btn-sm" id="next-track" title="Next"><i class="bi bi-chevron-right"></i></button>
+                    <div class="form-check ms-auto mb-0">
+                        <input class="form-check-input" type="checkbox" id="autoplay-next" checked>
+                        <label class="form-check-label small" for="autoplay-next">Auto-next</label>
+                    </div>
+                </div>
+                <div class="curate-bar">
+                    <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary"
+                           id="curate-folder" placeholder="New playlist folder…">
+                    <button class="btn btn-outline-primary btn-sm" id="curate-add" disabled>
+                        <i class="bi bi-folder-plus"></i> Add to folder
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" id="curate-delete" disabled>
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </div>
+                <div class="small mt-2" id="curate-status"></div>
+            </div>
+        </div>
+
+        <!-- File list -->
+        <div class="col-md-7">
+            <div class="d-flex align-items-center mb-2 gap-2">
+                <input type="text" class="form-control bg-dark text-light border-secondary" id="file-search" placeholder="Search files…">
+                <button class="btn btn-outline-secondary" id="refresh-files" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+            <div class="text-muted small mb-1" id="file-count">Loading…</div>
+            <div class="file-list-scroll" id="file-list"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const VIDEO_EXT = ['mp4', 'webm', 'mkv', 'mov', 'avi'];
+        let allFiles = [];
+        let view = [];
+        let currentIndex = -1;
+
+        const vid = document.getElementById('player-video');
+        const aud = document.getElementById('player-audio');
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function fmtBytes(b) {
+            if (!b || b < 1) return '0 B';
+            const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(b) / Math.log(1024));
+            return (b / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + u[i];
+        }
+        function ext(name) { const m = name.lastIndexOf('.'); return m >= 0 ? name.slice(m + 1).toLowerCase() : ''; }
+        function isVideo(name) { return VIDEO_EXT.includes(ext(name)); }
+        function activeMedia() { return vid.style.display !== 'none' ? vid : (aud.style.display !== 'none' ? aud : null); }
+        function status(msg, ok) {
+            const s = document.getElementById('curate-status');
+            s.className = 'small mt-2 ' + (ok ? 'text-success' : 'text-danger');
+            s.textContent = msg;
+        }
+
+        function play(item, indexInView) {
+            currentIndex = indexInView;
+            const useVideo = isVideo(item.name);
+            const el = useVideo ? vid : aud;
+            const other = useVideo ? aud : vid;
+            other.pause(); other.removeAttribute('src'); other.load(); other.style.display = 'none';
+            el.style.display = 'block';
+            el.src = '/api/media?path=' + encodeURIComponent(item.path);
+            el.load(); el.play().catch(() => {});
+            document.getElementById('now-playing').textContent = item.name;
+            document.getElementById('now-folder').textContent = item.folder;
+            document.getElementById('curate-add').disabled = false;
+            document.getElementById('curate-delete').disabled = false;
+            highlight();
+        }
+        function highlight() {
+            document.querySelectorAll('.file-row').forEach(r =>
+                r.classList.toggle('active', parseInt(r.dataset.idx, 10) === currentIndex));
+        }
+        function render() {
+            const q = document.getElementById('file-search').value.trim().toLowerCase();
+            view = q ? allFiles.filter(f => f.name.toLowerCase().includes(q) || f.folder.toLowerCase().includes(q)) : allFiles.slice();
+            const el = document.getElementById('file-list');
+            document.getElementById('file-count').textContent = view.length + (view.length === 1 ? ' file' : ' files');
+            if (!view.length) { el.innerHTML = '<div class="text-muted p-3 text-center">No files.</div>'; return; }
+            let html = '', lastFolder = null;
+            view.forEach((f, i) => {
+                if (f.folder !== lastFolder) { html += '<div class="file-folder-head">' + esc(f.folder) + '</div>'; lastFolder = f.folder; }
+                html += '<div class="file-row" data-idx="' + i + '">'
+                    + '<span class="fr-icon"><i class="bi bi-' + (isVideo(f.name) ? 'film' : 'music-note-beamed') + '"></i></span>'
+                    + '<span class="fr-name">' + esc(f.name) + '</span>'
+                    + '<span class="fr-meta">' + fmtBytes(f.size) + '</span></div>';
+            });
+            el.innerHTML = html;
+            highlight();
+        }
+        function load() {
+            document.getElementById('file-count').textContent = 'Loading…';
+            fetch('/api/all-media').then(r => r.json()).then(d => { allFiles = Array.isArray(d) ? d : []; render(); })
+                .catch(() => { document.getElementById('file-count').textContent = 'Failed to load files.'; });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            load();
+            document.getElementById('refresh-files').addEventListener('click', load);
+            document.getElementById('file-search').addEventListener('input', render);
+            document.getElementById('file-list').addEventListener('click', e => {
+                const row = e.target.closest('.file-row'); if (!row) return;
+                const i = parseInt(row.dataset.idx, 10); play(view[i], i);
+            });
+            document.getElementById('skip-back').addEventListener('click', () => { const m = activeMedia(); if (m) m.currentTime = Math.max(0, m.currentTime - 10); });
+            document.getElementById('skip-fwd').addEventListener('click', () => { const m = activeMedia(); if (m) m.currentTime += 10; });
+            document.getElementById('next-track').addEventListener('click', () => { if (currentIndex + 1 < view.length) play(view[currentIndex + 1], currentIndex + 1); });
+            document.getElementById('prev-track').addEventListener('click', () => { if (currentIndex > 0) play(view[currentIndex - 1], currentIndex - 1); });
+            [vid, aud].forEach(el => el.addEventListener('ended', () => {
+                if (document.getElementById('autoplay-next').checked && currentIndex + 1 < view.length) play(view[currentIndex + 1], currentIndex + 1);
+            }));
+
+            document.getElementById('curate-add').addEventListener('click', function () {
+                if (currentIndex < 0) return;
+                const folder = document.getElementById('curate-folder').value.trim();
+                if (!folder) { status('Enter a folder name first.', false); return; }
+                fetch('/api/add-to-folder', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: view[currentIndex].path, folder: folder }),
+                }).then(r => r.json()).then(res => {
+                    status(res.status === 'success' ? ('Added to “' + folder + '”.') : (res.message || 'Failed'), res.status === 'success');
+                });
+            });
+            document.getElementById('curate-delete').addEventListener('click', function () {
+                if (currentIndex < 0) return;
+                const item = view[currentIndex];
+                if (!confirm('Delete “' + item.name + '”? (moved to .trash)')) return;
+                fetch('/api/delete-media', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: item.path }),
+                }).then(r => r.json()).then(res => {
+                    if (res.status !== 'success') { status(res.message || 'Delete failed', false); return; }
+                    status('Deleted.', true);
+                    const nextItem = view[currentIndex + 1];
+                    allFiles = allFiles.filter(f => f.path !== item.path);
+                    render();
+                    if (nextItem) { const ni = view.findIndex(f => f.path === nextItem.path); if (ni >= 0) { play(view[ni], ni); return; } }
+                    currentIndex = -1;
+                    const m = activeMedia(); if (m) m.pause();
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

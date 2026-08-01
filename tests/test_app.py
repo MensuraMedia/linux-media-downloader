@@ -315,6 +315,46 @@ def test_playlists_page_renders(client):
     assert b"Playlists" in r.data
 
 
+# ── player / media curation ──────────────────────────────────────────────────
+
+def test_list_all_media(pl_root):
+    _make_playlist(pl_root, "a_playlist", ["x.mp3", "y.mp3"])
+    (pl_root / "single.mp3").write_bytes(b"z")
+    names = [m["name"] for m in pl.list_all_media()]
+    assert "x.mp3" in names and "single.mp3" in names
+
+
+def test_delete_media_file(pl_root):
+    p = _make_playlist(pl_root, "a_playlist", ["x.mp3", "y.mp3"])
+    f = os.path.join(p, "x.mp3")
+    assert pl.delete_media_file(f)["status"] == "success"
+    assert not os.path.exists(f)
+    assert os.path.isfile(os.path.join(p, ".trash", "x.mp3"))
+
+
+def test_delete_media_rejects_outside(pl_root):
+    assert pl.delete_media_file("/etc/hosts")["status"] == "error"
+
+
+def test_add_to_folder_copies(pl_root):
+    p = _make_playlist(pl_root, "a_playlist", ["x.mp3", "y.mp3"])
+    f = os.path.join(p, "x.mp3")
+    res = pl.add_to_folder(f, "My Curated")
+    assert res["status"] == "success"
+    assert os.path.isfile(os.path.join(str(pl_root), "My Curated", "x.mp3"))
+    assert os.path.isfile(f)  # original kept (it's a copy)
+
+
+def test_player_page_renders(client):
+    r = client.get("/player")
+    assert r.status_code == 200
+    assert b"Player" in r.data
+
+
+def test_serve_media_rejects_outside(client):
+    assert client.get("/api/media?path=/etc/hosts").status_code == 404
+
+
 def test_abbreviate_duplicates(pl_root):
     p = _make_playlist(pl_root, "mix_playlist",
                        ["Predator_Soundtrack_Track01.mp3",

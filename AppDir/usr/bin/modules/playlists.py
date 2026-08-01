@@ -507,6 +507,73 @@ def abbreviate_duplicate_strings(path, keep=4):
     return _rename_within(path, mapper)
 
 
+def is_safe_path(path):
+    """Public guard: True if path resolves inside a known download root."""
+    return _is_safe_path(path)
+
+
+def list_all_media():
+    """Every downloaded media file across the download roots (for the Player)."""
+    seen = set()
+    out = []
+    for base in _scan_dirs():
+        for root, dirs, files in os.walk(base):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]  # skip .trash etc.
+            for name in files:
+                if not _is_media(name):
+                    continue
+                full = os.path.join(root, name)
+                rp = os.path.realpath(full)
+                if rp in seen:
+                    continue
+                seen.add(rp)
+                try:
+                    size = os.path.getsize(full)
+                except OSError:
+                    size = 0
+                out.append({
+                    'name': name,
+                    'path': full,
+                    'folder': os.path.basename(root),
+                    'size': size,
+                })
+    return sorted(out, key=lambda x: (x['folder'].lower(), x['name'].lower()))
+
+
+def delete_media_file(path):
+    """Move a single media file to its folder's .trash (recoverable delete)."""
+    if not _is_safe_path(path) or not os.path.isfile(path):
+        return {'status': 'error', 'message': 'Invalid file path'}
+    trash = os.path.join(os.path.dirname(path), '.trash')
+    os.makedirs(trash, exist_ok=True)
+    base = os.path.basename(path)
+    dst = os.path.join(trash, _unique_name(trash, base, base))
+    try:
+        os.rename(path, dst)
+        return {'status': 'success'}
+    except OSError as e:
+        return {'status': 'error', 'message': str(e)}
+
+
+def add_to_folder(path, folder_name):
+    """Copy a media file into a (new) folder under the download root — curation."""
+    if not _is_safe_path(path) or not os.path.isfile(path):
+        return {'status': 'error', 'message': 'Invalid file path'}
+    name = _safe_folder_name(folder_name)
+    if not name:
+        return {'status': 'error', 'message': 'Folder name required'}
+    root = os.path.abspath(settings.default_download_path or 'downloads')
+    dest_dir = os.path.join(root, name)
+    os.makedirs(dest_dir, exist_ok=True)
+    base = os.path.basename(path)
+    dst = os.path.join(dest_dir, _unique_name(dest_dir, base, base))
+    try:
+        shutil.copy2(path, dst)
+        return {'status': 'success', 'folder': dest_dir, 'name': name}
+    except OSError as e:
+        return {'status': 'error', 'message': str(e)}
+
+
 def apply_operation(path, operation):
     """Dispatch a bulk file operation over a playlist folder."""
     if not _is_safe_path(path) or not os.path.isdir(path):

@@ -28,6 +28,11 @@ def playlists():
     """Render the playlists management page"""
     return render_template('playlists.html')
 
+@ui_routes.route('/player')
+def player():
+    """Render the media player / curation page"""
+    return render_template('player.html')
+
 @ui_routes.route('/information')
 def information():
     """Render the information page"""

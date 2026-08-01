@@ -2,7 +2,8 @@
 # modules/routes/api.py
 # API routes for YT Media Backup
 
-from flask import Blueprint, request, jsonify
+import os
+from flask import Blueprint, request, jsonify, send_file
 from modules.config.settings import (
     current_download,
     default_download_path,
@@ -173,6 +174,39 @@ def playlist_empty_trash_route():
     from modules import playlists
     path = (request.get_json() or {}).get('path', '')
     return jsonify(playlists.empty_trash(path))
+
+
+@api_routes.route('/api/all-media')
+def all_media_route():
+    """List every downloaded media file (for the Player)."""
+    from modules import playlists
+    return jsonify(playlists.list_all_media())
+
+
+@api_routes.route('/api/media')
+def serve_media_route():
+    """Stream a media file (supports range requests for seeking)."""
+    from modules import playlists
+    path = request.args.get('path', '')
+    if not playlists.is_safe_path(path) or not os.path.isfile(path):
+        return jsonify({'error': 'Not found'}), 404
+    return send_file(path, conditional=True)
+
+
+@api_routes.route('/api/delete-media', methods=['POST'])
+def delete_media_route():
+    """Move a single media file to trash."""
+    from modules import playlists
+    path = (request.get_json() or {}).get('path', '')
+    return jsonify(playlists.delete_media_file(path))
+
+
+@api_routes.route('/api/add-to-folder', methods=['POST'])
+def add_to_folder_route():
+    """Copy a media file into a (new) curation folder."""
+    from modules import playlists
+    data = request.get_json() or {}
+    return jsonify(playlists.add_to_folder(data.get('path', ''), data.get('folder', '')))
 
 
 @api_routes.route('/api/open-folder', methods=['POST'])
