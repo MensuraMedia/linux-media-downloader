@@ -33,6 +33,11 @@ def player():
     """Render the media player / curation page"""
     return render_template('player.html')
 
+@ui_routes.route('/file-manager')
+def file_manager():
+    """Render the file manager page"""
+    return render_template('file-manager.html')
+
 @ui_routes.route('/information')
 def information():
     """Render the information page"""

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .fm-wrap { max-width: 1200px; margin: 0 auto; }
+    .fm-stats { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .fm-stat {
+        background: #2a2f34; border: 1px solid #3a4046; border-radius: 10px;
+        padding: .5rem 1rem; text-align: center; cursor: pointer; min-width: 120px;
+    }
+    .fm-stat.active { border-color: #0d6efd; background: #0d3b66; }
+    .fm-stat-num { font-size: 1.5rem; font-weight: 800; color: #0d6efd; line-height: 1.1; }
+    .fm-stat-label { color: #8b949e; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; }
+
+    .ops-group-label { color:#8b949e; font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; margin:.25rem 0 .3rem; }
+    .ops-bar { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .75rem; }
+    .ops-bar .btn { font-size: .78rem; }
+
+    /* Dense filename grid — 3+ columns, ~1px cell margins */
+    .fm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1px; }
+    .fm-scroll { max-height: 60vh; overflow-y: auto; border: 1px solid #3a4046; border-radius: 8px; padding: 1px; }
+    .fm-scroll::-webkit-scrollbar { width: 10px; } .fm-scroll::-webkit-scrollbar-thumb { background:#444; border-radius:6px; }
+    .fm-cell {
+        display: flex; align-items: center; gap: .4rem; padding: 1px 5px;
+        background: #2a2f34; font-size: .8rem; min-width: 0;
+    }
+    .fm-cell:hover { background: #323841; }
+    .fm-cell.active { background: #0d3b66; }
+    .fm-cell.fm-deleted { color: #555; background: #202226; pointer-events: none; text-decoration: line-through; }
+    .fm-cell.fm-deleted .fm-play, .fm-cell.fm-deleted .fm-trash { color: #555; }
+    .fm-play { cursor: pointer; color: #0d6efd; flex-shrink: 0; }
+    .fm-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fm-trash { cursor: pointer; color: #b5565b; flex-shrink: 0; }
+    .fm-hint { color:#8b949e; font-size:.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 fm-wrap">
+    <h1 class="display-6 fw-bold mb-4 text-center">File Manager</h1>
+
+    <!-- Statistics -->
+    <div class="fm-stats">
+        <button class="fm-stat active" data-filter="all"><div class="fm-stat-num" id="stat-total">–</div><div class="fm-stat-label">Files</div></button>
+        <button class="fm-stat" data-filter="dup"><div class="fm-stat-num" id="stat-dup">–</div><div class="fm-stat-label">Duplicate names</div></button>
+        <button class="fm-stat" data-filter="size"><div class="fm-stat-num" id="stat-size">–</div><div class="fm-stat-label">Same size</div></button>
+    </div>
+
+    <!-- Global text controls (apply to ALL app files) -->
+    <div class="ops-group-label">Apply to all files</div>
+    <div class="ops-bar">
+        <button class="btn btn-outline-light btn-sm" data-op="clean">Clean up names</button>
+        <button class="btn btn-outline-light btn-sm" data-op="remove_special">Remove special chars</button>
+        <button class="btn btn-outline-light btn-sm" data-op="replace_spaces">Replace spaces</button>
+        <button class="btn btn-outline-light btn-sm" data-op="remove_filler">Remove filler</button>
+        <button class="btn btn-outline-light btn-sm" data-op="truncate">Truncate 35</button>
+        <button class="btn btn-outline-light btn-sm" data-op="standard_font">Standard font</button>
+        <button class="btn btn-outline-light btn-sm" data-op="abbreviate_dupes">Abbreviate dupes</button>
+        <button class="btn btn-outline-light btn-sm" data-op="number_prefix">Number prefix</button>
+        <button class="btn btn-outline-light btn-sm" data-op="lower_case">lower</button>
+        <button class="btn btn-outline-light btn-sm" data-op="upper_case">UPPER</button>
+        <button class="btn btn-outline-light btn-sm" data-op="title_case">Title</button>
+        <button class="btn btn-outline-light btn-sm" data-op="camel_case">Camel</button>
+        <button class="btn btn-outline-secondary btn-sm ms-2" id="fm-undo" disabled><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
+        <button class="btn btn-outline-secondary btn-sm" id="fm-redo" disabled><i class="bi bi-arrow-clockwise"></i> Redo</button>
+    </div>
+    <div id="fm-op-status" class="mb-2 small"></div>
+
+    <div class="d-flex align-items-center mb-2 gap-2">
+        <input type="text" class="form-control bg-dark text-light border-secondary" id="fm-search" placeholder="Search files…">
+        <button class="btn btn-outline-secondary" id="fm-refresh" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
+    </div>
+    <div class="fm-hint mb-1">Click ▶ to play. While playing: <b>→</b> +5s · <b>←</b> −2s · <b>↑/↓</b> volume · <b>Delete</b> stop &amp; delete.</div>
+    <div class="text-muted small mb-1" id="fm-count"></div>
+    <div class="fm-scroll"><div class="fm-grid" id="fm-grid"></div></div>
+
+    <audio id="fm-audio" style="display:none;"></audio>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        let allFiles = [];
+        let view = [];
+        let filter = 'all';
+        let activePath = null;
+        const deleted = new Set();
+        const audio = document.getElementById('fm-audio');
+
+        function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+        function computeView() {
+            let list = allFiles.slice();
+            if (filter === 'dup') {
+                const c = {}; allFiles.forEach(f => c[f.name.toLowerCase()] = (c[f.name.toLowerCase()]||0)+1);
+                list = list.filter(f => c[f.name.toLowerCase()] > 1);
+            } else if (filter === 'size') {
+                const c = {}; allFiles.forEach(f => { if(f.size>0) c[f.size]=(c[f.size]||0)+1; });
+                list = list.filter(f => f.size>0 && c[f.size] > 1);
+            }
+            const q = document.getElementById('fm-search').value.trim().toLowerCase();
+            if (q) list = list.filter(f => f.name.toLowerCase().includes(q) || f.folder.toLowerCase().includes(q));
+            view = list;
+        }
+        function render() {
+            computeView();
+            document.getElementById('fm-count').textContent = view.length + (view.length===1?' file':' files');
+            document.getElementById('fm-grid').innerHTML = view.map(f => {
+                const del = deleted.has(f.path) ? ' fm-deleted' : '';
+                const act = (f.path===activePath) ? ' active' : '';
+                return '<div class="fm-cell'+del+act+'" data-path="'+esc(f.path)+'" title="'+esc(f.folder+' / '+f.name)+'">'
+                    + '<span class="fm-play" title="Play"><i class="bi bi-play-fill"></i></span>'
+                    + '<span class="fm-name">'+esc(f.name)+'</span>'
+                    + '<span class="fm-trash" title="Delete"><i class="bi bi-trash"></i></span></div>';
+            }).join('');
+        }
+        function loadStats() {
+            fetch('/api/file-stats').then(r=>r.json()).then(s=>{
+                document.getElementById('stat-total').textContent = s.total;
+                document.getElementById('stat-dup').textContent = s.duplicate_names;
+                document.getElementById('stat-size').textContent = s.same_size;
+            }).catch(()=>{});
+        }
+        function load() {
+            document.getElementById('fm-count').textContent='Loading…';
+            fetch('/api/app-media').then(r=>r.json()).then(d=>{ allFiles=Array.isArray(d)?d:[]; render(); }).catch(()=>{document.getElementById('fm-count').textContent='Failed to load.';});
+            loadStats();
+        }
+        function opStatus(msg, ok){ const s=document.getElementById('fm-op-status'); s.className='mb-2 small '+(ok?'text-success':'text-danger'); s.textContent=msg; }
+        function setUndo(state){ document.getElementById('fm-undo').disabled=!state.can_undo; document.getElementById('fm-redo').disabled=!state.can_redo; }
+
+        function play(path) {
+            if (deleted.has(path)) return;
+            activePath = path;
+            audio.src = '/api/media?path=' + encodeURIComponent(path);
+            audio.load(); audio.play().catch(()=>{});
+            document.querySelectorAll('.fm-cell').forEach(c => c.classList.toggle('active', c.dataset.path===path));
+        }
+        function markDeleted(path) {
+            deleted.add(path);
+            const cell = document.querySelector('.fm-cell[data-path="'+CSS.escape(path)+'"]');
+            if (cell) { cell.classList.add('fm-deleted'); cell.classList.remove('active'); }
+        }
+        function deleteFile(path) {
+            fetch('/api/delete-media',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path})})
+                .then(r=>r.json()).then(res=>{
+                    if(res.status!=='success'){opStatus(res.message||'Delete failed',false);return;}
+                    if(path===activePath){ audio.pause(); audio.removeAttribute('src'); audio.load(); activePath=null; }
+                    markDeleted(path);
+                    allFiles = allFiles.filter(f=>f.path!==path);
+                    loadStats();
+                });
+        }
+        function runGlobal(op, label) {
+            let msg = 'Apply "'+label+'" to ALL files in every folder?';
+            if(op==='delete_long') msg='Delete ALL files over 6 minutes everywhere? Cannot be undone easily.';
+            if(!confirm(msg)) return;
+            opStatus('Working…', true);
+            fetch('/api/global-operation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({operation:op})})
+                .then(r=>r.json()).then(res=>{
+                    if(res.status!=='success'){opStatus(res.message||'Failed',false);return;}
+                    const n = res.deleted!=null?res.deleted:res.renamed;
+                    opStatus('Done — '+n+' file(s) across '+res.folders+' folder(s).', true);
+                    setUndo(res); load();
+                });
+        }
+        function undoRedo(which){
+            fetch('/api/playlist-'+which,{method:'POST'}).then(r=>r.json()).then(res=>{
+                opStatus(res.status==='success'?((which==='undo'?'Undone':'Redone')+' — '+res.changed+' file(s).'):'Nothing to '+which, res.status==='success');
+                setUndo(res); load();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            load();
+            document.getElementById('fm-refresh').addEventListener('click', load);
+            document.getElementById('fm-search').addEventListener('input', render);
+            document.querySelectorAll('.fm-stat').forEach(b=>b.addEventListener('click',function(){
+                filter=this.dataset.filter;
+                document.querySelectorAll('.fm-stat').forEach(x=>x.classList.toggle('active',x===this));
+                render();
+            }));
+            document.querySelectorAll('[data-op]').forEach(b=>b.addEventListener('click',()=>runGlobal(b.getAttribute('data-op'), b.textContent.trim())));
+            document.getElementById('fm-undo').addEventListener('click',()=>undoRedo('undo'));
+            document.getElementById('fm-redo').addEventListener('click',()=>undoRedo('redo'));
+            document.getElementById('fm-grid').addEventListener('click', function(e){
+                const cell=e.target.closest('.fm-cell'); if(!cell||cell.classList.contains('fm-deleted'))return;
+                const path=cell.dataset.path;
+                if(e.target.closest('.fm-trash')){ deleteFile(path); return; }
+                play(path);
+            });
+            // Keyboard transport for the active track (ignore when typing in a field)
+            document.addEventListener('keydown', function(e){
+                if(!activePath) return;
+                const t=e.target.tagName; if(t==='INPUT'||t==='TEXTAREA') return;
+                switch(e.key){
+                    case 'ArrowRight': audio.currentTime += 5; e.preventDefault(); break;
+                    case 'ArrowLeft': audio.currentTime = Math.max(0, audio.currentTime - 2); e.preventDefault(); break;
+                    case 'ArrowUp': audio.volume = Math.min(1, audio.volume + 0.1); e.preventDefault(); break;
+                    case 'ArrowDown': audio.volume = Math.max(0, audio.volume - 0.1); e.preventDefault(); break;
+                    case 'Delete': deleteFile(activePath); e.preventDefault(); break;
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

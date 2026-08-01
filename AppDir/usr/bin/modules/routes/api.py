@@ -193,6 +193,28 @@ def serve_media_route():
     return send_file(path, conditional=True)
 
 
+@api_routes.route('/api/app-media')
+def app_media_route():
+    """List media files this app recorded (for the File Manager)."""
+    from modules import playlists
+    return jsonify(playlists.list_app_media())
+
+
+@api_routes.route('/api/file-stats')
+def file_stats_route():
+    """Stats over app-recorded files (total / duplicate names / same size)."""
+    from modules import playlists
+    return jsonify(playlists.file_stats())
+
+
+@api_routes.route('/api/global-operation', methods=['POST'])
+def global_operation_route():
+    """Apply a text operation across every app folder as one undoable action."""
+    from modules import playlists
+    op = (request.get_json() or {}).get('operation', '')
+    return jsonify(playlists.global_operation(op))
+
+
 @api_routes.route('/api/delete-media', methods=['POST'])
 def delete_media_route():
     """Move a single media file to trash."""

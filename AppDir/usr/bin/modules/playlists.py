@@ -285,7 +285,7 @@ def rename_playlist(path, new_name):
     return {'status': 'success', 'path': new_path, 'name': new_name}
 
 
-def delete_long_files(path, max_seconds=LONG_SECONDS):
+def delete_long_files(path, max_seconds=LONG_SECONDS, record=True):
     """Move media files longer than max_seconds into a .trash folder (undoable)."""
     if not _is_safe_path(path) or not os.path.isdir(path):
         return {'status': 'error', 'message': 'Invalid playlist path'}
@@ -302,8 +302,9 @@ def delete_long_files(path, max_seconds=LONG_SECONDS):
                 moves.append((fp, dst))
             except OSError:
                 pass
-    _record(moves)
-    return {'status': 'success', 'deleted': len(moves), **stack_state()}
+    if record:
+        _record(moves)
+    return {'status': 'success', 'deleted': len(moves), 'moves': moves, **stack_state()}
 
 
 def trash_count(path):
@@ -400,11 +401,13 @@ def _unique_name(path, new_name, original):
     return candidate
 
 
-def _rename_within(path, mapper):
+def _rename_within(path, mapper, record=True):
     """Apply mapper(base_name, index) -> new_base to each media file.
 
     On a name collision a 4-character salt is inserted before the extension so
-    uniqueness is always preserved (rather than skipping the file).
+    uniqueness is always preserved (rather than skipping the file). When
+    `record` is False the moves are returned but not pushed to the undo stack
+    (used by global operations that record all folders as one undo entry).
     """
     if not _is_safe_path(path) or not os.path.isdir(path):
         return {'status': 'error', 'message': 'Invalid playlist path'}
@@ -423,8 +426,9 @@ def _rename_within(path, mapper):
             moves.append((src, dst))
         except OSError:
             pass
-    _record(moves)
-    return {'status': 'success', 'renamed': len(moves), **stack_state()}
+    if record:
+        _record(moves)
+    return {'status': 'success', 'renamed': len(moves), 'moves': moves, **stack_state()}
 
 
 def _split_camel(token):
@@ -478,7 +482,7 @@ def _camel_case(base):
     return ''.join(w[:1].upper() + w[1:].lower() for w in words)
 
 
-def abbreviate_duplicate_strings(path, keep=4):
+def abbreviate_duplicate_strings(path, keep=4, record=True):
     """Shorten tokens that recur across many files to their first `keep` chars.
 
     e.g. a playlist where every file starts "Predator_Soundtrack_" becomes
@@ -499,8 +503,9 @@ def abbreviate_duplicate_strings(path, keep=4):
     # "Duplicate" = recurs in 2+ files and is long enough that abbreviating helps
     common = {tok for tok, count in freq.items() if count >= 2 and len(tok) > keep}
     if not common:
-        _record([])
-        return {'status': 'success', 'renamed': 0, **stack_state()}
+        if record:
+            _record([])
+        return {'status': 'success', 'renamed': 0, 'moves': [], **stack_state()}
 
     def mapper(base, idx):
         parts = re.split(r'([\s_\-]+)', base)  # keeps delimiters at odd indices
@@ -509,7 +514,7 @@ def abbreviate_duplicate_strings(path, keep=4):
             for i, part in enumerate(parts)
         )
 
-    return _rename_within(path, mapper)
+    return _rename_within(path, mapper, record=record)
 
 
 def is_safe_path(path):
@@ -579,15 +584,15 @@ def add_to_folder(path, folder_name):
         return {'status': 'error', 'message': str(e)}
 
 
-def apply_operation(path, operation):
+def apply_operation(path, operation, record=True):
     """Dispatch a bulk file operation over a playlist folder."""
     if not _is_safe_path(path) or not os.path.isdir(path):
         return {'status': 'error', 'message': 'Invalid playlist path'}
 
     if operation == 'delete_long':
-        return delete_long_files(path)
+        return delete_long_files(path, record=record)
     if operation == 'abbreviate_dupes':
-        return abbreviate_duplicate_strings(path)
+        return abbreviate_duplicate_strings(path, record=record)
 
     if operation == 'number_prefix':
         files = _media_files(path)
@@ -595,6 +600,7 @@ def apply_operation(path, operation):
         return _rename_within(
             path,
             lambda b, i: f"{str(i + 1).zfill(width)}_{re.sub(r'^[0-9]+[_-]', '', b)}",
+            record=record,
         )
 
     rename_ops = {
@@ -611,6 +617,63 @@ def apply_operation(path, operation):
         'camel_case':     lambda b, i: _camel_case(b),
     }
     if operation in rename_ops:
-        return _rename_within(path, rename_ops[operation])
+        return _rename_within(path, rename_ops[operation], record=record)
 
     return {'status': 'error', 'message': f'Unknown operation: {operation}'}
+
+
+# ── File Manager (app-recorded files) ────────────────────────────────────────
+def list_app_media():
+    """Media files inside the app's playlist folders — files this app recorded.
+
+    Narrower than list_all_media(): only folders the app created/uses, not every
+    loose file in the download root.
+    """
+    out = []
+    seen = set()
+    for pl in list_playlists():
+        folder = pl['path']
+        try:
+            files = _media_files(folder)
+        except OSError:
+            continue
+        for name in files:
+            full = os.path.join(folder, name)
+            rp = os.path.realpath(full)
+            if rp in seen:
+                continue
+            seen.add(rp)
+            try:
+                size = os.path.getsize(full)
+            except OSError:
+                size = 0
+            out.append({'name': name, 'path': full, 'folder': pl['name'], 'size': size})
+    return sorted(out, key=lambda x: (x['folder'].lower(), x['name'].lower()))
+
+
+def file_stats():
+    """Stats over app-recorded files: total, duplicate names, same-size groups."""
+    from collections import Counter
+    files = list_app_media()
+    names = Counter(f['name'].lower() for f in files)
+    sizes = Counter(f['size'] for f in files if f['size'] > 0)
+    return {
+        'total': len(files),
+        'duplicate_names': sum(c for c in names.values() if c > 1),
+        'same_size': sum(c for c in sizes.values() if c > 1),
+    }
+
+
+def global_operation(operation):
+    """Apply a text operation across every app folder as ONE undoable action."""
+    folders = sorted({os.path.dirname(f['path']) for f in list_app_media()})
+    total = 0
+    all_moves = []
+    for folder in folders:
+        res = apply_operation(folder, operation, record=False)
+        if res.get('status') == 'success':
+            all_moves.extend(res.get('moves', []))
+            total += res.get('renamed', 0) + res.get('deleted', 0)
+    _record(all_moves)
+    key = 'deleted' if operation == 'delete_long' else 'renamed'
+    return {'status': 'success', key: total, 'folders': len(folders), **stack_state()}

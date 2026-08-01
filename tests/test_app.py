@@ -370,6 +370,46 @@ def test_serve_media_rejects_outside(client):
     assert client.get("/api/media?path=/etc/hosts").status_code == 404
 
 
+# ── file manager ─────────────────────────────────────────────────────────────
+
+def test_list_app_media_scopes_to_playlist_folders(pl_root):
+    _make_playlist(pl_root, "a_playlist", ["x.mp3", "y.mp3"])
+    (pl_root / "loose_single.mp3").write_bytes(b"z")  # loose root file, not a playlist
+    names = [m["name"] for m in pl.list_app_media()]
+    assert "x.mp3" in names
+    assert "loose_single.mp3" not in names  # not inside a playlist folder
+
+
+def test_file_stats(pl_root):
+    _make_playlist(pl_root, "a_playlist", ["dup.mp3", "unique.mp3"])
+    _make_playlist(pl_root, "b_playlist", ["dup.mp3", "other.mp3"])  # dup.mp3 name collision
+    s = pl.file_stats()
+    assert s["total"] == 4
+    assert s["duplicate_names"] == 2   # the two dup.mp3
+
+
+def test_global_operation_across_folders(pl_root):
+    _make_playlist(pl_root, "a_playlist", ["a b.mp3"])
+    _make_playlist(pl_root, "b_playlist", ["c d.mp3"])
+    # single-file folders aren't "playlists" (>1), so give each 2 files
+    (pl_root / "a_playlist" / "e f.mp3").write_bytes(b"x")
+    (pl_root / "b_playlist" / "g h.mp3").write_bytes(b"x")
+    res = pl.global_operation("replace_spaces")
+    assert res["status"] == "success"
+    assert "a_b.mp3" in os.listdir(str(pl_root / "a_playlist"))
+    assert "g_h.mp3" in os.listdir(str(pl_root / "b_playlist"))
+    # one combined undo restores everything
+    pl.undo_last()
+    assert "a b.mp3" in os.listdir(str(pl_root / "a_playlist"))
+    assert "g h.mp3" in os.listdir(str(pl_root / "b_playlist"))
+
+
+def test_file_manager_page_renders(client):
+    r = client.get("/file-manager")
+    assert r.status_code == 200
+    assert b"File Manager" in r.data
+
+
 def test_abbreviate_duplicates(pl_root):
     p = _make_playlist(pl_root, "mix_playlist",
                        ["Predator_Soundtrack_Track01.mp3",
