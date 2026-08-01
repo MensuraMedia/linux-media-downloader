@@ -94,11 +94,10 @@ os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
 # Function to save history (limited to 100 entries)
 def save_download_history():
     """Save download history to JSON file, keeping only the 100 most recent entries"""
-    global download_history
-    # Limit to 100 most recent downloads
+    # Mutate in place (never rebind) so other modules' imported references stay valid.
     if len(download_history) > 100:
-        download_history = download_history[-100:]
-    
+        download_history[:] = download_history[-100:]
+
     try:
         with open(HISTORY_FILE, 'w') as f:
             json.dump(download_history, f, indent=2)
@@ -107,17 +106,16 @@ def save_download_history():
 
 # Function to load history
 def load_download_history():
-    """Load download history from JSON file"""
-    global download_history
+    """Load download history from JSON file (in place, never rebind)"""
     if os.path.exists(HISTORY_FILE):
         try:
             with open(HISTORY_FILE, 'r') as f:
-                download_history = json.load(f)
+                download_history[:] = json.load(f)
         except Exception as e:
             print(f"Error loading download history: {e}")
-            download_history = []
+            download_history[:] = []
     else:
-        download_history = []
+        download_history[:] = []
 
 # Load history when this module is imported
 load_download_history()

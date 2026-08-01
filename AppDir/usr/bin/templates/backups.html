@@ -19,11 +19,16 @@
                                 <tbody>
                                     {% for download in download_history %}
                                     <tr>
-                                        <td class="progress-cell">
-                                            <i class="bi bi-folder2-open" onclick="openDirectory('{{ download.output_dir }}')"></i>
+                                        <td class="progress-cell text-center">
+                                            <i class="bi bi-folder2-open open-folder" role="button"
+                                               style="cursor:pointer;"
+                                               title="Open {{ download.output_dir }}"
+                                               data-path="{{ download.output_dir }}"></i>
                                         </td>
                                         <td class="file-name-cell d-flex justify-content-between align-items-center">
-                                            <span>{{ download.title }}</span>
+                                            <span>{{ download.title }}
+                                                <small class="text-muted d-block">{{ download.output_dir }}{% if download.timestamp %} · {{ download.timestamp|replace("T", " ") }}{% endif %}</small>
+                                            </span>
                                             {% if download.status == 'completed' %}
                                                 <span class="badge bg-success">Completed</span>
                                             {% elif download.status == 'completed_with_errors' %}
@@ -60,26 +65,23 @@
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
         
-        // Handle open folder button click
-        $('.open-folder').click(function() {
+        // Handle open folder click (event delegation, works for all rows)
+        $(document).on('click', '.open-folder', function() {
             const folderPath = $(this).data('path');
-            
             fetch('/api/open-folder', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: folderPath }),
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status !== 'success') {
-                    alert('Error opening folder: ' + (data.message || 'Folder not found'));
+                    alert('Could not open folder:\n' + folderPath + '\n\n' + (data.message || 'Folder not found'));
                 }
             })
             .catch(error => {
                 console.error('Error opening folder:', error);
-                alert('Error opening folder');
+                alert('Error opening folder:\n' + folderPath);
             });
         });
     });

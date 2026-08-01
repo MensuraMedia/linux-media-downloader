@@ -3,7 +3,7 @@
 # UI routes for YT Media Backup
 
 from flask import Blueprint, render_template
-from modules.config.settings import download_history
+from modules.config import settings
 
 # Create blueprint
 ui_routes = Blueprint('ui_routes', __name__)
@@ -15,8 +15,15 @@ def index():
 
 @ui_routes.route('/backups')
 def backups():
-    """Render the backups page"""
-    return render_template('backups.html', download_history=download_history)
+    """Render the backups page, newest download first (descending by time)."""
+    hist = settings.download_history
+    # Sort descending by timestamp; append-index as tiebreaker so entries without
+    # a timestamp (legacy) keep newest-appended-first order.
+    order = sorted(range(len(hist)),
+                   key=lambda i: (hist[i].get('timestamp', ''), i),
+                   reverse=True)
+    ordered = [hist[i] for i in order]
+    return render_template('backups.html', download_history=ordered)
 
 @ui_routes.route('/links')
 def links():
