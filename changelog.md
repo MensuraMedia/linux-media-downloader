@@ -49,3 +49,4 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T15:30:00 | Docs: added Ignore Duplicates concept (docs/concept-ignore-duplicates.md) — originals manifest + >=80% relevancy skip |
 | 2026-08-01T16:00:00 | Home: state retention — reconnect to an in-progress download on load (rebuild table/circle/cancel, resume polling) |
 | 2026-08-01T16:05:00 | API: /api/download refuses a second concurrent download (fixes stuck background process needing app restart); 57 tests |
+| 2026-08-01T16:30:00 | Docs: added Chapter/Tracklist Split technical design (docs/concept-chapter-split.md) — recommends ffmpeg -c copy post-hoc with hybrid chapter source |

@@ -465,6 +465,7 @@ AppImage: `~/Applications`.
 | Integration test with a real download + CI | Planned |
 | **File Manager** (dense grid of app files, stats, global text ops, inline keyboard player) | Implemented — see §7.8 |
 | **Ignore Duplicates** (skip already-downloaded / ≥80%-similar tracks via an originals manifest) | Concept — see [docs/concept-ignore-duplicates.md](docs/concept-ignore-duplicates.md) |
+| **Chapter / Tracklist Split** (split a long video into per-track files) | Concept — see [docs/concept-chapter-split.md](docs/concept-chapter-split.md) (recommends ffmpeg `-c copy` post-hoc, hybrid source) |
 
 ---
 
