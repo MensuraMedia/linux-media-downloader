@@ -439,6 +439,10 @@ The suite is fully offline (never performs a real download). Coverage:
 the top-level sources under `AppDir/usr/bin/`. Recommended install location for a built
 AppImage: `~/Applications`.
 
+For the **full packaging guide** — how to ship this as a desktop app on Linux (pipx-from-git,
+AppImage, .deb, Flatpak/Snap) and Windows (PyInstaller), plus the current scaffold's gaps and
+the ffmpeg-bundling requirement — see [docs/packaging.md](docs/packaging.md).
+
 ---
 
 ## 12. Security Notes

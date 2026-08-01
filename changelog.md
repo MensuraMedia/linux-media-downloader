@@ -58,3 +58,4 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T17:50:00 | Fix(Split): accurate progress + status during splitting — defers 'completed' until split done, reports per-track progress (65 tests) |
 | 2026-08-01T18:00:00 | UI: File Manager grid fixed to 3 columns with 2px cell padding + gap |
 | 2026-08-01T18:05:00 | UI: fixed Home progress-bar symmetry — bar now centers under the title (percentage moved below, no longer shifts the bar) |
+| 2026-08-01T18:30:00 | Docs: added packaging & distribution guide (docs/packaging.md) — Linux (pipx/AppImage/.deb/Flatpak) + Windows (PyInstaller); linked from README + DOCUMENTATION |

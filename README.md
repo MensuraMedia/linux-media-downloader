@@ -276,7 +276,8 @@ Ubuntu, Mint, and similar distributions.
 **Recommended storage location:** keep the built AppImage in `~/Applications` (create the
 folder if needed) to keep user-level apps organized.
 
-> Packaging scripts and full instructions are being finalized as the project matures.
+> **Full packaging guide** — Linux (pipx-from-git, AppImage, .deb, Flatpak) and Windows
+> (PyInstaller): see [docs/packaging.md](docs/packaging.md).
 
 ---
 
