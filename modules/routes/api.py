@@ -42,6 +42,7 @@ def start_download():
     download_type = data.get('download_type', 'audio')
     playlist_mode = data.get('playlist_mode', 'single')
     skip_long = bool(data.get('skip_long', False))
+    split_chapters = bool(data.get('split_chapters', False))
     try:
         limit = int(data.get('limit', 0) or 0)
     except (TypeError, ValueError):
@@ -60,7 +61,7 @@ def start_download():
     add_link_history(url, download_type, playlist_mode)
 
     # Start download in a separate thread
-    start_download_thread(url, output_dir, download_type, playlist_mode, skip_long, limit)
+    start_download_thread(url, output_dir, download_type, playlist_mode, skip_long, limit, split_chapters)
 
     return jsonify({'status': 'started'})
 

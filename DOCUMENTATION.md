@@ -200,7 +200,7 @@ Key fields in `current_download`:
 |-------|--------|---------|
 | `download_type` | `audio` (MP3 192 kbps) / `video` (MP4) | `audio` |
 | `playlist_mode` | `single` / `playlist` | `single` |
-| `skip_long` | `true` / `false` (skip tracks > 6 min) | `false` |
+| `skip_long` | `true` / `false` (skip tracks > 7 min) | `false` |
 | `limit` | `0` (all) or top-N for playlists (10 / 20 / 30) — maps to yt-dlp `playlistend` | `0` |
 
 ---
@@ -228,8 +228,8 @@ The scope is a **single mutually-exclusive radio group** (no separate "Full Play
 - **First 10 / 20 / 30** — `playlist_mode=playlist`, `limit=N` → yt-dlp `playlistend`;
   `total_files` is capped so the progress UI reflects it.
 
-The **Skip long files (over 6 min)** checkbox installs a yt-dlp `match_filter` that skips any
-entry whose `duration` exceeds 360 s. The frontend derives `playlist_mode`/`limit` from the
+The **Skip long files (over 7 min)** checkbox installs a yt-dlp `match_filter` that skips any
+entry whose `duration` exceeds 420 s. The frontend derives `playlist_mode`/`limit` from the
 selected scope; the backend API is unchanged.
 
 ### 7.3 Progress reporting
@@ -302,7 +302,7 @@ page: a **Files** row (Delete long / Empty trash) plus three minimal labeled col
 
 | `operation` | Effect |
 |-------------|--------|
-| `delete_long` | Delete files longer than 6 minutes |
+| `delete_long` | Delete files longer than 7 minutes |
 | `clean` | Full clean: strip specials, collapse spaces/dashes to underscores |
 | `remove_special` | Remove special characters |
 | `replace_spaces` | Replace spaces with underscores |
@@ -391,7 +391,7 @@ See [docs/concept-file-manager.md](docs/concept-file-manager.md) for the origina
 | Flask secret key | `SECRET_KEY` env var | random per run (`os.urandom`) |
 | Download folder | UI field / `output_dir` | XDG Downloads → `~/Downloads` → `./downloads` |
 | Audio codec/quality | `media.py` | MP3 @ 192 kbps |
-| "Long" threshold | `LONG_SECONDS` in `playlists.py` / filter in `media.py` | 360 s (6 min) |
+| "Long" threshold | `LONG_SECONDS` in `playlists.py` / filter in `media.py` | 420 s (7 min) |
 | History cap | `save_download_history` | 100 entries |
 | Links cap | `save_links_history` | 500 entries |
 

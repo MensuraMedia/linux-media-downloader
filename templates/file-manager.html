@@ -154,7 +154,7 @@
         }
         function runGlobal(op, label) {
             let msg = 'Apply "'+label+'" to ALL files in every folder?';
-            if(op==='delete_long') msg='Delete ALL files over 6 minutes everywhere? Cannot be undone easily.';
+            if(op==='delete_long') msg='Delete ALL files over 7 minutes everywhere? Cannot be undone easily.';
             if(!confirm(msg)) return;
             opStatus('Working…', true);
             fetch('/api/global-operation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({operation:op})})

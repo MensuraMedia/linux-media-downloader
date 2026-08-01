@@ -12,6 +12,7 @@ import modules.config.settings as settings
 from modules.utils.file_utils import sanitize_filename
 from modules.download.media import DownloadProgress
 from modules import playlists as pl
+from modules.download import chapters as ch
 import browser_app  # provides a Flask app with both blueprints registered
 
 
@@ -418,6 +419,54 @@ def test_file_manager_page_renders(client):
     r = client.get("/file-manager")
     assert r.status_code == 200
     assert b"File Manager" in r.data
+
+
+# ── chapter / tracklist split ────────────────────────────────────────────────
+
+def test_parse_description_segments():
+    segs = ch.parse_description("0:00 Intro\n1:30 - Second Track\n3:00 Third", duration=240)
+    assert [s["start"] for s in segs] == [0, 90, 180]
+    assert [s["end"] for s in segs] == [90, 180, 240]
+    assert segs[1]["title"] == "Second Track"
+
+
+def test_parse_description_needs_two_and_monotonic():
+    assert ch.parse_description("0:00 only one", 100) == []
+    # non-increasing timestamps are dropped
+    assert len(ch.parse_description("0:00 A\n0:00 B\n2:00 C", 200)) == 2
+
+
+def test_parse_timestamp_hms():
+    assert ch.parse_timestamp("1:02:03") == 3723
+    assert ch.parse_timestamp("2:05") == 125
+
+
+def test_chapter_segments_prefers_embedded():
+    info = {"chapters": [{"start_time": 0, "end_time": 10, "title": "One"},
+                         {"start_time": 10, "end_time": 20, "title": "Two"}],
+            "description": "0:00 X\n0:05 Y"}
+    assert [s["title"] for s in ch.chapter_segments(info, 20)] == ["One", "Two"]
+
+
+def test_segment_filename_labeled_and_unlabeled():
+    assert ch.segment_filename({"title": "Cool Song"}, 0, 3, "Vid") == "Cool_Song"
+    # unlabeled -> NN_<video-title-summary>
+    assert ch.segment_filename({"title": ""}, 2, 12, "My Big Compilation") == "03_My_Big_Compilation"
+
+
+def test_split_file_integration(tmp_path):
+    import subprocess
+    src = tmp_path / "full.mp3"
+    subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+                    "-t", "6", "-q:a", "9", str(src)], capture_output=True)
+    if not src.exists():
+        pytest.skip("ffmpeg not available")
+    segs = [{"start": 0, "end": 3, "title": "One"}, {"start": 3, "end": 6, "title": ""}]
+    res = ch.split_file(str(src), segs, str(tmp_path / "out"), "MyVideo")
+    assert res["tracks"] == 2
+    out = sorted(os.listdir(str(tmp_path / "out")))
+    assert "One.mp3" in out
+    assert "02_MyVideo.mp3" in out
 
 
 def test_abbreviate_duplicates(pl_root):

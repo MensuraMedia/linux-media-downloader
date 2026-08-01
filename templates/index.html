@@ -45,7 +45,12 @@
                             </div>
                             <div class="form-check mt-2 opts-disabled" id="skip-long-option">
                                 <input class="form-check-input" type="checkbox" id="skip-long-check" disabled>
-                                <label class="form-check-label" for="skip-long-check">Skip long files (over 6 min)</label>
+                                <label class="form-check-label" for="skip-long-check">Skip long files (over 7 min)</label>
+                            </div>
+                            <div class="form-check mt-2" id="split-option"
+                                 title="Detect a long multi-chapter video and split it into separate videos by its chapters / tracklist">
+                                <input class="form-check-input" type="checkbox" id="split-check">
+                                <label class="form-check-label" for="split-check">Split Multi-Chapter video</label>
                             </div>
                         </div>
 
@@ -540,7 +545,8 @@
                     download_type: downloadType,
                     playlist_mode: playlistMode,
                     skip_long: $('#skip-long-check').is(':checked'),
-                    limit: getScope().limit
+                    limit: getScope().limit,
+                    split_chapters: $('#split-check').is(':checked')
                 }),
             })
             .then(response => response.json())

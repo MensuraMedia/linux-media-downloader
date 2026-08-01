@@ -7,6 +7,7 @@
 
 ## Changes
 <!-- Add newest first -->
+- [2026-08-01 chapter split + 7min](changes/2026-08-01_chapter-split-and-7min.md) — Chapter/tracklist split (ffmpeg -c copy, unlabeled→NN_summary); long-file threshold 6→7 min
 - [2026-08-01 state retention](changes/2026-08-01_state-retention.md) — Home reconnects to an in-progress download; /api/download rejects concurrent downloads
 - [2026-08-01 file manager](changes/2026-08-01_file-manager.md) — File Manager tab (app-file grid, stats, global ops, keyboard player)
 - [2026-08-01 player + firstN fix](changes/2026-08-01_player-and-firstN-fix.md) — Player/curation page (stream, delete, add-to-folder); First-N table row cap fix

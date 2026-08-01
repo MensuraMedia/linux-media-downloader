@@ -82,8 +82,8 @@ MEDIA_EXTS = {
     '.flac', '.ogg', '.oga', '.mkv', '.aac', '.mov', '.avi',
 }
 
-# A "long" file is over 6 minutes
-LONG_SECONDS = 360
+# A "long" file is over 7 minutes
+LONG_SECONDS = 420
 
 # Max characters kept by the "truncate" operation
 TRUNCATE_LEN = 35

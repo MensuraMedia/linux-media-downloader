@@ -55,11 +55,11 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 - **Links history** — a scrollable, YouTube-style record of every link you've submitted
   (thumbnails, badges, search, open/copy/re-use), on its own **Links** tab.
 - **Skip long files** — when a playlist is detected, optionally skip any track over
-  6 minutes so they're never downloaded.
+  7 minutes so they're never downloaded.
 - **Playlists manager** — a **Playlists** tab listing every downloaded playlist (folders
   with more than one track). Rename a playlist (renames its folder), then drill in to a
   sortable table (Length / Filename / Size) with bulk operations: delete all long files
-  (>6 min), clean up names, remove special characters, replace spaces with underscores,
+  (>7 min), clean up names, remove special characters, replace spaces with underscores,
   remove filler words (music/mix/remaster/live/4k/hd/months/…), truncate to 35 chars,
   normalize to a standard font (ASCII), change case (lower/UPPER/Title/Camel), and add a
   number prefix, and abbreviate duplicate strings (`Predator_Soundtrack_Track01` →
@@ -225,7 +225,7 @@ Flask binds only to `127.0.0.1` (localhost); the app is not exposed to your netw
 | `POST` | `/api/playlist-operation` | Bulk file op (delete_long / clean / remove_special / replace_spaces / number_prefix) |
 | `POST` | `/api/open-folder` | Open a folder in the system file manager |
 
-`/api/download` also accepts `skip_long: true` to skip tracks over 6 minutes.
+`/api/download` also accepts `skip_long: true` to skip tracks over 7 minutes.
 
 Pages: `/` (Home), `/backups` (History), `/playlists` (Playlists), `/links` (Links), `/about`.
 

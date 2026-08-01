@@ -102,7 +102,8 @@ class DownloadProgress:
         self.current_file = ""
         self.total_files = total_files
         self.completed_files = 0
-        
+        self.info = None   # richest info_dict seen (chapters/description) for splitting
+
     def progress_hook(self, d):
         """Handle download progress updates"""
         if d["status"] == "downloading":
@@ -153,6 +154,7 @@ class DownloadProgress:
         elif d['status'] == 'finished':
             self.completed_files += 1
             info_dict = d.get("info_dict") or {}
+            self.info = info_dict or self.info
             current_download.update({
                 'status': 'processing',
                 'completed_files': self.completed_files,
@@ -181,7 +183,7 @@ class DownloadProgress:
 
 
 def download_media(url, output_dir, download_type='audio', playlist_mode='single',
-                   skip_long=False, limit=0):
+                   skip_long=False, limit=0, split_chapters=False):
     """Download media from YouTube"""
     reset_cancel()
 
@@ -264,12 +266,12 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
         'extractor_retries': 5,
     }
 
-    # Optional filter: skip any track longer than 6 minutes (playlists)
+    # Optional filter: skip any track longer than 7 minutes (playlists)
     if skip_long:
         def _skip_long_filter(info_dict, *, incomplete=False):
             dur = info_dict.get('duration')
-            if dur is not None and dur > 360:
-                return f"Skipping long file (>6 min): {info_dict.get('title', '')}"
+            if dur is not None and dur > 420:
+                return f"Skipping long file (>7 min): {info_dict.get('title', '')}"
             return None
         ydl_opts['match_filter'] = _skip_long_filter
 
@@ -390,7 +392,14 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
         # Save history to persistent storage
         from modules.config.settings import save_download_history
         save_download_history()
-        
+
+        # Optional: split a single downloaded video into per-track files
+        if split_chapters and playlist_mode != 'playlist':
+            try:
+                _split_into_tracks(output_dir, progress_tracker.info, info.get('title'))
+            except Exception as e:
+                print(f"Chapter split error: {e}")
+
     except yt_dlp.utils.DownloadCancelled:
         # User cancelled mid-download: report it as cancelled, not an error,
         # and skip the alternative-method retry.
@@ -403,12 +412,40 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
     # Record the final outcome against the links-history entry (all exit paths).
     update_last_link_history(status=current_download['status'])
 
+
+def _split_into_tracks(output_dir, meta, fallback_title):
+    """Split the just-downloaded single file into per-track files via chapters/tracklist."""
+    from modules.download.chapters import chapter_segments, split_file, MEDIA_EXTS
+    meta = meta or {}
+    segments = chapter_segments(meta, meta.get('duration'))
+    if not segments:
+        current_download['message'] = 'No chapters/tracklist found to split'
+        return
+    # Find the file we just downloaded (newest top-level media file)
+    cands = [os.path.join(output_dir, f) for f in os.listdir(output_dir)
+             if os.path.isfile(os.path.join(output_dir, f))
+             and os.path.splitext(f)[1].lower() in MEDIA_EXTS]
+    if not cands:
+        return
+    src = max(cands, key=os.path.getmtime)
+    title = meta.get('title') or fallback_title or 'video'
+    tracks_dir = os.path.join(output_dir, (sanitize_filename(title) or 'tracks') + '_playlist')
+    current_download['message'] = 'Splitting into tracks…'
+    res = split_file(src, segments, tracks_dir, title)
+    if res.get('tracks'):
+        current_download['message'] = f"Split into {res['tracks']} tracks"
+        try:
+            os.remove(src)  # keep only the split tracks
+        except OSError:
+            pass
+
+
 def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single',
-                          skip_long=False, limit=0):
+                          skip_long=False, limit=0, split_chapters=False):
     """Start the download process in a separate thread"""
     download_thread = threading.Thread(
         target=download_media,
-        args=(url, output_dir, download_type, playlist_mode, skip_long, limit)
+        args=(url, output_dir, download_type, playlist_mode, skip_long, limit, split_chapters)
     )
     download_thread.daemon = True
     download_thread.start()

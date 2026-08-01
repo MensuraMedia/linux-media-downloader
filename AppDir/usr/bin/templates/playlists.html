@@ -101,7 +101,7 @@
         <div class="ops-group-label">Files</div>
         <div class="ops-bar mb-3">
             <button class="btn btn-outline-danger btn-sm" data-op="delete_long">
-                <i class="bi bi-scissors"></i> Delete all long files (&gt;6 min)
+                <i class="bi bi-scissors"></i> Delete all long files (&gt;7 min)
             </button>
             <button class="btn btn-outline-danger btn-sm" id="pl-empty-trash" disabled>
                 <i class="bi bi-trash3"></i> Empty trash
@@ -329,7 +329,7 @@
         }
         function runOperation(op, label) {
             let msg = `Apply "${label}" to all files in this playlist?`;
-            if (op === 'delete_long') msg = 'Delete ALL files longer than 6 minutes? This cannot be undone.';
+            if (op === 'delete_long') msg = 'Delete ALL files longer than 7 minutes? This cannot be undone.';
             if (!confirm(msg)) return;
             const status = document.getElementById('pl-op-status');
             status.innerHTML = '<span class="text-info">Working…</span>';
