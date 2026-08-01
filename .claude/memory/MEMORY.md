@@ -7,6 +7,8 @@
 
 ## Changes
 <!-- Add newest first -->
+- [2026-07-31 skip-long + playlists manager](changes/2026-07-31_skip-long-and-playlists-manager.md) — Skip-long filter, History rename, Playlists manager (list/rename/ops) + path-safety; DOCUMENTATION.md
+- [2026-07-31 progress + links history](changes/2026-07-31_progress-fix-and-links-history.md) — Per-file progress fix, live readout, Links History feature, runtime-data untracking
 - [2026-07-31 cancel + cleanup](changes/2026-07-31_cancel-fix-and-cleanup.md) — Cross-module cancel fix, dead-code repair, unused imports, secret key, AppDir sync
 
 ## Decisions
