@@ -152,8 +152,16 @@ linux-media-downloader/
 - [`pywebview`](https://pywebview.flowrl.com/) *(native window only)*
 - [`ffmpeg`](https://ffmpeg.org/) on your `PATH` *(required for audio extraction / merging)*
 
-> The native window (`app.py`) needs a graphical display and a PyWebView backend
-> (GTK/Qt/WebKit). On a headless machine, use the browser fallback (`browser_app.py`).
+> **Running as a standalone app window (not a browser):** `python3 app.py` opens the UI in a
+> native PyWebView window — its own title bar and taskbar icon, no browser chrome. PyWebView
+> needs a GUI backend installed:
+> - **Linux (GTK):** `sudo apt install python3-gi gir1.2-webkit2-4.1 libgirepository1.0-dev`
+> - **Linux (Qt) alternative:** `pip install "pywebview[qt]"`
+> - **Windows:** Edge WebView2 (preinstalled on Win 10/11).
+>
+> On a headless machine (no display) use the browser fallback: `python3 browser_app.py` →
+> open `http://127.0.0.1:5000`. Packaged builds (see [docs/packaging.md](docs/packaging.md))
+> bundle the backend so end users get the standalone window with no setup.
 
 ---
 
