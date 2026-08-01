@@ -25,3 +25,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-07-31T00:00:18 | Feature: 'Skip long files' filter for playlists (yt-dlp match_filter skips tracks > 6 min) |
 | 2026-07-31T00:00:19 | Sidebar: renamed 'Backups' to 'History'; added 'Playlists' tab |
 | 2026-07-31T00:00:20 | Feature: Playlists manager (list, rename folder, sortable Length/Filename/Size table, bulk ops) with path-safety guards; 28 tests |
+| 2026-07-31T00:00:21 | Fix: playlist scan no longer walks into the home dir (only *_playlist folders contribute a parent root); regression test (29 total) |
+| 2026-07-31T00:00:22 | Docs: added DOCUMENTATION.md (full technical reference with tables); linked from README |

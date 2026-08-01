@@ -26,10 +26,18 @@ def _scan_dirs():
         dirs.add(os.path.abspath(settings.default_download_path))
     for entry in settings.download_history:
         out = entry.get('output_dir')
-        if out:
-            out = os.path.abspath(out)
-            dirs.add(out)
+        if not out:
+            continue
+        out = os.path.abspath(out)
+        # Only treat the parent as a scan root when output_dir is an actual
+        # "<name>_playlist" folder. Otherwise output_dir IS the download root —
+        # using its parent would scan the whole home directory. (A playlist URL
+        # grabbed in single mode records is_playlist=True but a non-playlist
+        # output_dir, so is_playlist alone is not a reliable signal.)
+        if os.path.basename(out).endswith('_playlist'):
             dirs.add(os.path.dirname(out))
+        else:
+            dirs.add(out)
     dirs.add(os.path.abspath('downloads'))
     return {d for d in dirs if os.path.isdir(d)}
 

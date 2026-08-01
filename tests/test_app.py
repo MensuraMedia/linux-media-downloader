@@ -233,3 +233,20 @@ def test_playlists_page_renders(client):
     r = client.get("/playlists")
     assert r.status_code == 200
     assert b"Playlists" in r.data
+
+
+def test_scan_does_not_walk_into_parent(tmp_path, monkeypatch):
+    # A single (non-playlist) history entry must NOT cause the parent dir to be
+    # scanned, or the download root itself / sibling folders leak in as playlists.
+    root = tmp_path / "root"
+    root.mkdir()
+    monkeypatch.setattr(settings, "default_download_path", str(root))
+    # A playlist URL grabbed in single mode: is_playlist True, but output_dir is
+    # the plain download root (not a *_playlist folder). Must not scan the parent.
+    monkeypatch.setattr(settings, "download_history",
+                        [{"output_dir": str(root), "is_playlist": True}])
+    _make_playlist(root, "mix_playlist", ["a.mp3", "b.mp3"])
+    _make_playlist(tmp_path, "other", ["c.mp3", "d.mp3"])  # sibling of root -> ignored
+    names = [p["name"] for p in pl.list_playlists()]
+    assert "mix_playlist" in names
+    assert "other" not in names

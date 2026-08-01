@@ -8,6 +8,8 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 > **Repository note:** This project is maintained at
 > **[`MensuraMedia/linux-media-downloader`](https://github.com/MensuraMedia/linux-media-downloader)**.
 > It originated at `mikesdatawork/linux-media-downloader` (kept as the `upstream` remote).
+>
+> **Full technical reference:** see [DOCUMENTATION.md](DOCUMENTATION.md).
 
 ---
 
