@@ -7,6 +7,8 @@
 
 ## Changes
 <!-- Add newest first -->
+- [2026-08-01 fixed seq + limit + 3col](changes/2026-08-01_fixed-seq-limit-3col.md) — Fixed sequence badges (wrap 999→000), top-N download limit, 3-column Home layout
+- [2026-08-01 trash/color/sort/abbreviate](changes/2026-08-01_trash-color-sort-abbreviate.md) — Empty-trash, newest-first sort, badge colors, abbreviate-dupes, subtle hover
 - [2026-08-01 undo/redo + camelCase filler + seq](changes/2026-08-01_undo-redo-camelcase-seq.md) — Undo/Redo (delete→.trash), camelCase filler detection, 001/002 badges
 - [2026-07-31 playlist filename ops](changes/2026-07-31_playlist-filename-ops.md) — remove-filler/truncate/standard-font/case ops, 4-char collision salt, grouped ops UI
 - [2026-07-31 skip-long + playlists manager](changes/2026-07-31_skip-long-and-playlists-manager.md) — Skip-long filter, History rename, Playlists manager (list/rename/ops) + path-safety; DOCUMENTATION.md

@@ -170,7 +170,7 @@ Key fields in `current_download`:
 |--------|----------|--------------|----------|
 | `POST` | `/api/check-url` | `{url}` | Playlist/video info (`is_playlist`, `entries`, `title`) |
 | `GET`  | `/api/get-default-path` | — | `{path}` |
-| `POST` | `/api/download` | `{url, output_dir, download_type, playlist_mode, skip_long}` | `{status:"started"}` |
+| `POST` | `/api/download` | `{url, output_dir, download_type, playlist_mode, skip_long, limit}` | `{status:"started"}` |
 | `POST` | `/api/cancel-download` | — | `{status:"cancelled"}` |
 | `GET`  | `/api/download-status` | — | `current_download` dict |
 | `GET`  | `/api/links-history` | — | Links list, newest first |
@@ -178,9 +178,11 @@ Key fields in `current_download`:
 | `GET`  | `/api/playlists` | — | `[{name, path, file_count, total_size}]` |
 | `POST` | `/api/playlist-files` | `{path}` | `{path, files:[{filename, size, duration}]}` |
 | `POST` | `/api/rename-playlist` | `{path, new_name}` | `{status, path, name}` |
-| `POST` | `/api/playlist-operation` | `{path, operation}` — operation ∈ delete_long, clean, remove_special, replace_spaces, remove_filler, truncate, standard_font, number_prefix, lower_case, upper_case, title_case, camel_case | `{status, renamed \| deleted, can_undo, can_redo}` |
+| `POST` | `/api/playlist-operation` | `{path, operation}` — operation ∈ delete_long, clean, remove_special, replace_spaces, remove_filler, truncate, standard_font, abbreviate_dupes, number_prefix, lower_case, upper_case, title_case, camel_case | `{status, renamed \| deleted, can_undo, can_redo}` |
 | `POST` | `/api/playlist-undo` | — | Reverse the last operation `{status, changed, can_undo, can_redo}` |
 | `POST` | `/api/playlist-redo` | — | Replay the last undone operation |
+| `POST` | `/api/playlist-empty-trash` | `{path}` | Purge the `.trash` folder `{status, purged}` |
+| `POST` | `/api/playlist-color` | `{path, color}` | Set the badge colour `{status, color}` |
 | `POST` | `/api/open-folder` | `{path}` | `{status}` |
 
 **Download parameters**
@@ -190,6 +192,7 @@ Key fields in `current_download`:
 | `download_type` | `audio` (MP3 192 kbps) / `video` (MP4) | `audio` |
 | `playlist_mode` | `single` / `playlist` | `single` |
 | `skip_long` | `true` / `false` (skip tracks > 6 min) | `false` |
+| `limit` | `0` (all) or top-N for playlists (10 / 20 / 30) — maps to yt-dlp `playlistend` | `0` |
 
 ---
 
@@ -203,11 +206,17 @@ Key fields in `current_download`:
 filenames are sanitized both by a custom post-processor and a final directory sweep. For
 `playlist` mode a `<name>_playlist` folder is created.
 
-### 7.2 Skip long files
+### 7.2 Skip long files & top-N limit
 
-When a playlist is detected the Home page shows a **Skip long files (over 6 min)** checkbox.
-If enabled, `download_media` installs a yt-dlp `match_filter` that returns a skip message for
-any entry whose `duration` exceeds 360 s, so long tracks are never downloaded.
+When a playlist is detected the Home page reveals two extra controls:
+- **Skip long files (over 6 min)** — `download_media` installs a yt-dlp `match_filter` that
+  returns a skip message for any entry whose `duration` exceeds 360 s, so long tracks are
+  never downloaded.
+- **Amount** — radio controls: All / First 10 / First 20 / First 30. A non-zero `limit`
+  maps to yt-dlp `playlistend`, and `total_files` is capped so the progress UI reflects it.
+
+The Home options are laid out in three minimal columns — **Format**, **Playlist**, and
+**Amount** (the Amount column appears only once a playlist is detected).
 
 ### 7.3 Progress reporting
 
@@ -273,6 +282,7 @@ containing **more than one** media file:
 | `remove_filler` | Drop clutter words — music, mix, remaster, live, 4k, hd, official, video, remix, cover, months, years, … — **even when glued together in camelCase** (`SongOfficialVideo` → `Song`) |
 | `truncate` | Truncate names to 35 characters |
 | `standard_font` | Normalize fancy / accented / full-width characters to standard ASCII |
+| `abbreviate_dupes` | Shorten tokens that recur across files to 4 chars (`Predator_Soundtrack_Track01` → `Pred_Soun_Track01`); unique parts kept |
 | `number_prefix` | Add a zero-padded `NN_` prefix (re-numbers) |
 | `lower_case` / `upper_case` / `title_case` / `camel_case` | Change filename casing |
 
@@ -286,7 +296,16 @@ moves; `delete_long` moves files into a `.trash` subfolder instead of erasing th
 detail view's **Undo**/**Redo** buttons (`/api/playlist-undo`, `/api/playlist-redo`) reverse
 or replay the last operation. The undo/redo state is in memory and resets on restart.
 
-The playlist **list** view numbers each entry with a large `001`, `002`, … sequence badge.
+**List view.** Each playlist gets a large sequence badge that is **fixed to that playlist**:
+a monotonic order is assigned when it is first seen (newest gets the highest) and persisted
+(`data/playlist_seq.json`, keyed by real path, migrated on rename). The list is sorted by
+that order **descending** (latest-added on top). The displayed badge is `order % 1000`, so
+it counts `000`–`999` and wraps back to `000`. Clicking a badge opens a colour picker; the
+chosen colour is saved per playlist (`data/playlist_colors.json`) to make playlists
+memorable.
+
+**Trash.** `delete_long` moves files to `.trash`; the **Empty trash** button
+(`/api/playlist-empty-trash`) permanently purges them and reports the count.
 
 ### 7.7 Filename sanitization
 

@@ -62,10 +62,14 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
   (>6 min), clean up names, remove special characters, replace spaces with underscores,
   remove filler words (music/mix/remaster/live/4k/hd/months/…), truncate to 35 chars,
   normalize to a standard font (ASCII), change case (lower/UPPER/Title/Camel), and add a
-  number prefix. Filler-word removal works even inside camelCase names
+  number prefix, and abbreviate duplicate strings (`Predator_Soundtrack_Track01` →
+  `Pred_Soun_Track01`). Filler-word removal works even inside camelCase names
   (`SongOfficialVideo` → `Song`). Name collisions are resolved with a 4-character salt, and
-  every operation is **undoable** (delete moves files to `.trash`). Playlists are numbered
-  `001`, `002`, … in the list.
+  every operation is **undoable** (delete moves files to `.trash`, purgeable via Empty
+  trash). Playlists carry a **fixed** sequence badge (assigned newest-highest, wraps
+  `999`→`000`), sorted latest-added first, with per-playlist badge colours you can pick.
+- **Playlist download controls** — for playlists, Home shows a **Skip long files** filter
+  and an **Amount** choice (All / First 10 / First 20 / First 30), laid out in clean columns.
 - **Folder selection & open** — choose a download directory and open it in your file manager.
 - **Filename sanitization** — output names are normalized (alphanumeric + underscores).
 - **Two ways to run** — native desktop window *or* an ordinary web browser.

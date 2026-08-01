@@ -32,3 +32,7 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T09:00:00 | Playlists: filler-word removal now detects words inside camelCase (e.g. SongOfficialVideo -> Song) |
 | 2026-08-01T09:05:00 | Playlists: added Undo/Redo (rename ops reversible; delete_long moves to .trash); state via /api/playlist-undo,-redo |
 | 2026-08-01T09:10:00 | Playlists: large sequence badge (001, 002, …) on each list entry; 36 tests, live end-to-end verified |
+| 2026-08-01T10:00:00 | Playlists: added Empty trash action (/api/playlist-empty-trash) to purge deleted files; 37 tests |
+| 2026-08-01T10:30:00 | Playlists: sort newest-first (by mtime) so 001=newest; per-playlist badge colour picker (persisted, migrates on rename) |
+| 2026-08-01T10:45:00 | Playlists: added 'Abbreviate duplicates' op (recurring tokens -> 4 chars); 41 tests, live verified |
+| 2026-08-01T11:00:00 | Playlists: softened button hover to a subtle grey (matches the Back button) |
