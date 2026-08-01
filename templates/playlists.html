@@ -92,38 +92,49 @@
             </button>
         </div>
 
-        <div class="ops-group-label">Cleanup</div>
-        <div class="ops-bar">
-            <button class="btn btn-outline-danger" data-op="delete_long">
+        <!-- Destructive file actions -->
+        <div class="ops-group-label">Files</div>
+        <div class="ops-bar mb-3">
+            <button class="btn btn-outline-danger btn-sm" data-op="delete_long">
                 <i class="bi bi-scissors"></i> Delete all long files (&gt;6 min)
             </button>
-            <button class="btn btn-outline-info" data-op="clean">
-                <i class="bi bi-magic"></i> Clean up file names
-            </button>
-            <button class="btn btn-outline-light" data-op="remove_special">Remove special characters</button>
-            <button class="btn btn-outline-light" data-op="replace_spaces">Replace spaces with underscores</button>
-            <button class="btn btn-outline-light" data-op="remove_filler">Remove filler words</button>
-            <button class="btn btn-outline-light" data-op="truncate">Truncate to 35</button>
-            <button class="btn btn-outline-light" data-op="standard_font">Standard font</button>
-            <button class="btn btn-outline-light" data-op="abbreviate_dupes">Abbreviate duplicates</button>
-            <button class="btn btn-outline-light" data-op="number_prefix">Add number prefix</button>
-        </div>
-
-        <div class="ops-group-label">Case</div>
-        <div class="ops-bar">
-            <button class="btn btn-outline-light" data-op="lower_case">lower case</button>
-            <button class="btn btn-outline-light" data-op="upper_case">UPPER CASE</button>
-            <button class="btn btn-outline-light" data-op="title_case">Title Case</button>
-            <button class="btn btn-outline-light" data-op="camel_case">CamelCase</button>
-        </div>
-
-        <div class="mb-2">
             <button class="btn btn-outline-danger btn-sm" id="pl-empty-trash" disabled>
                 <i class="bi bi-trash3"></i> Empty trash
             </button>
         </div>
 
-        <div id="pl-op-status" class="mb-2"></div>
+        <!-- Text controls, organized into three minimal columns -->
+        <div class="row options-row text-start">
+            <div class="col-md-4 option-col">
+                <div class="option-col-label">Clean up</div>
+                <div class="d-grid gap-1">
+                    <button class="btn btn-outline-light btn-sm" data-op="clean">Clean up file names</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="remove_special">Remove special characters</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="replace_spaces">Replace spaces with underscores</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="remove_filler">Remove filler words</button>
+                </div>
+            </div>
+            <div class="col-md-4 option-col">
+                <div class="option-col-label">Transform</div>
+                <div class="d-grid gap-1">
+                    <button class="btn btn-outline-light btn-sm" data-op="abbreviate_dupes">Abbreviate duplicates</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="truncate">Truncate to 35</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="standard_font">Standard font</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="number_prefix">Add number prefix</button>
+                </div>
+            </div>
+            <div class="col-md-4 option-col">
+                <div class="option-col-label">Case</div>
+                <div class="d-grid gap-1">
+                    <button class="btn btn-outline-light btn-sm" data-op="lower_case">lower case</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="upper_case">UPPER CASE</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="title_case">Title Case</button>
+                    <button class="btn btn-outline-light btn-sm" data-op="camel_case">CamelCase</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pl-op-status" class="mb-2 mt-3"></div>
 
         <hr class="border-secondary pl-divider">
 
@@ -366,7 +377,7 @@
                 });
             });
 
-            document.querySelectorAll('.ops-bar .btn').forEach(btn => {
+            document.querySelectorAll('[data-op]').forEach(btn => {
                 btn.addEventListener('click', () => runOperation(btn.getAttribute('data-op'), btn.textContent.trim()));
             });
 

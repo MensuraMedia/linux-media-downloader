@@ -276,7 +276,9 @@ containing **more than one** media file:
 | Filename | On-disk name |
 | Size | File size |
 
-**Operations** (`POST /api/playlist-operation`):
+**Operations** (`POST /api/playlist-operation`) — organized in the detail view like the Home
+page: a **Files** row (Delete long / Empty trash) plus three minimal labeled columns —
+**Clean up**, **Transform**, and **Case**:
 
 | `operation` | Effect |
 |-------------|--------|
