@@ -48,6 +48,33 @@ Categories=AudioVideo;Utility;
 
 ---
 
+## 1b. Add it to the program menu (Linux Mint / Cinnamon) — no packaging needed
+
+You can make the app appear in the Mint menu against your current checkout, launchable and
+closeable like any other app, with its own icon — without building a package:
+
+```bash
+./packaging/install-menu.sh        # install (per-user, no root)
+./packaging/install-menu.sh --uninstall
+```
+
+What it does:
+- Writes `~/.local/share/applications/linux-media-downloader.desktop` pointing at this repo's
+  `app.py` (using `venv/bin/python` if a venv exists, else system `python3`).
+- Installs the icon (`packaging/linux-media-downloader.svg`, the Heroicons "window" glyph on
+  the app-blue tile) into `~/.local/share/icons/hicolor/scalable/apps/`.
+- Refreshes the desktop/icon caches.
+
+Then search **"Linux Media Downloader"** in the Mint menu (right-click → *Add to panel* /
+*Add to desktop* to pin it). Launching runs `app.py`, which opens the **native PyWebView
+window** with normal min/maximize/close controls; closing the window exits the app (and saves
+history via the `atexit` hook). The window's taskbar icon association uses `StartupWMClass`;
+if Cinnamon shows a generic icon there, log out/in once so the new `.desktop` is indexed.
+
+> Requires a PyWebView GUI backend (see README Requirements) and `ffmpeg`. This per-user
+> launcher is for a dev/source checkout; the packaged routes below install the menu entry
+> and icon system-wide automatically.
+
 ## 2. Linux — routes by effort
 
 ### 2A. pipx / pip from git  ← simplest "install from git"

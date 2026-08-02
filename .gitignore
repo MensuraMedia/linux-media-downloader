@@ -30,3 +30,6 @@ Thumbs.db
 # Runtime data (history is regenerated at runtime, not version-controlled)
 data/*.json
 **/data/*.json
+
+# AppDir build cruft
+AppDir/usr/bin/__pycache__/

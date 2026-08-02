@@ -1,0 +1,5 @@
+#!/bin/bash
+# AppRun — AppImage entry point for Linux Media Downloader
+HERE="$(dirname "$(readlink -f "$0")")"
+export PATH="$HERE/usr/bin:$PATH"      # bundled ffmpeg (if present)
+exec "${PYTHON:-python3}" "$HERE/usr/bin/app.py" "$@"

@@ -1,6 +1,11 @@
 [Desktop Entry]
-Name=Linux Media Downloader
-Exec=python3 /usr/bin/app.py
-Icon=linux-media-downloader
+Version=1.0
 Type=Application
-Categories=AudioVideo;Utility;
+Name=Linux Media Downloader
+Comment=Download and back up YouTube media (audio/video, playlists)
+Exec=linux-media-downloader
+Icon=linux-media-downloader
+Terminal=false
+Categories=AudioVideo;Recorder;
+Keywords=youtube;download;media;music;video;backup;
+StartupWMClass=Linux Media Downloader

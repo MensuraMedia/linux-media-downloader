@@ -163,6 +163,14 @@ linux-media-downloader/
 > open `http://127.0.0.1:5000`. Packaged builds (see [docs/packaging.md](docs/packaging.md))
 > bundle the backend so end users get the standalone window with no setup.
 
+**Add it to the Linux Mint / Cinnamon program menu** (per-user, no root), with its own icon:
+
+```bash
+./packaging/install-menu.sh              # adds "Linux Media Downloader" to the menu
+./packaging/install-menu.sh --uninstall  # remove it
+```
+It launches `app.py` as a native window (min/maximize/close controls); closing exits the app.
+
 ---
 
 ## 📦 Installation
