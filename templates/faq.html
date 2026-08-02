@@ -87,12 +87,14 @@
     <h2 id="pages">The pages (sidebar)</h2>
     <table>
         <tr><th>Page</th><th>What it's for</th></tr>
-        <tr><td><b>Home</b></td><td>Paste a link, pick your options, start a download, and watch live progress.</td></tr>
+        <tr><td><b>Home</b></td><td>Paste a link, pick your options, start a download, and watch live progress. Add more links while one runs — they queue up.</td></tr>
+        <tr><td><b>Pending</b></td><td>The download queue: everything waiting, currently downloading, and finished. Jobs run one after another.</td></tr>
         <tr><td><b>Playlists</b></td><td>Every playlist folder you've downloaded. Rename it, sort its files by length/name/size, and run bulk text operations. Each playlist has a fixed number badge whose colour you can pick.</td></tr>
         <tr><td><b>Player</b></td><td>Play any downloaded file (audio or video) with seek, volume, skip and auto-next. Delete a file you don't want, or "Add to folder" to curate a new playlist as you listen.</td></tr>
         <tr><td><b>File Manager</b></td><td>A dense grid of every file the app downloaded, with stats (how many duplicate names, how many share the same size). Run text operations across all files, play any file with keyboard controls (→ +5s, ← −2s, ↑/↓ volume, Delete = stop &amp; delete), or delete individually.</td></tr>
         <tr><td><b>History Downloads</b></td><td>A list of completed downloads, newest first, with a link that opens the exact folder the files went to.</td></tr>
         <tr><td><b>History Links</b></td><td>A scrollable record of every link you've submitted, with thumbnails — search it, copy a link, or re-use one.</td></tr>
+        <tr><td><b>Settings</b></td><td>Edit the filler-word list and character replacements that the text operations use.</td></tr>
         <tr><td><b>FAQ</b></td><td>This page.</td></tr>
         <tr><td><b>About</b></td><td>App info and licensing.</td></tr>
     </table>
@@ -109,11 +111,23 @@
         <tr><td>Remove filler words</td><td>Drop clutter like <em>official, video, remaster, live, 4k, hd, OST, anime, months, years…</em> (even when glued in CamelCase).</td></tr>
         <tr><td>Truncate to 35</td><td>Shorten long names to 35 characters.</td></tr>
         <tr><td>Standard font</td><td>Convert fancy/accented characters to plain ASCII.</td></tr>
+        <tr><td>Apply replacements</td><td>Find-and-replace specific characters/text you define on the <b>Settings</b> page (e.g. turn <code>&amp;</code> into <code>and</code>, or delete a stray symbol).</td></tr>
         <tr><td>Abbreviate duplicates</td><td>Shorten words that repeat across many files (<code>Predator_Soundtrack_Track01</code> → <code>Pred_Soun_Track01</code>).</td></tr>
-        <tr><td>Add number prefix</td><td>Prepend <code>01_</code>, <code>02_</code>, …</td></tr>
-        <tr><td>lower / UPPER / Title / Camel</td><td>Change the casing of every word.</td></tr>
-        <tr><td>Delete all long files (&gt;7 min)</td><td>Move over-long files to trash (recoverable).</td></tr>
+        <tr><td>Add number prefix</td><td>Prepend <code>01_</code>, <code>02_</code>, … (zero-padded to the file count).</td></tr>
+        <tr><td>lower case</td><td>Make the whole name lowercase.</td></tr>
+        <tr><td>UPPER CASE</td><td>Make the whole name uppercase.</td></tr>
+        <tr><td>Title Case</td><td>Capitalize the first letter of every word (across <code>_ - .</code> and digits).</td></tr>
+        <tr><td>CamelCase</td><td>Join words with each capitalized and no separators.</td></tr>
+        <tr><td>Delete all long files (&gt;7 min)</td><td>Move over-long files to <code>.trash</code> (recoverable; empty it later).</td></tr>
+        <tr><td>Empty trash</td><td>Permanently remove trashed files from a playlist.</td></tr>
     </table>
+    <p><b>These operations are configurable.</b> The <b>Settings</b> page lets you edit the
+    <em>filler words</em> list (what "Remove filler words" strips) and define
+    <em>character replacements</em> (what "Apply replacements" swaps). Your changes take
+    effect immediately across the Playlists and File Manager pages.</p>
+    <p><b>Playlists</b> runs these on a single playlist folder; <b>File Manager</b> runs them
+    across <em>all</em> app files at once. Both keep names unique (a short salt on a clash)
+    and support <b>Undo/Redo</b>.</p>
 
     <h2 id="trouble">Troubleshooting</h2>
     <table>

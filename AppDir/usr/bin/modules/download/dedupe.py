@@ -8,7 +8,7 @@ import re
 import json
 import difflib
 
-from modules.playlists import FILLER_WORDS
+from modules.config import user_settings
 
 # Words dropped during normalization (in addition to FILLER_WORDS + years)
 STOPWORDS = {
@@ -26,9 +26,10 @@ _manifest = []   # [{'id':.., 'title':.., 'tokens':[...], 'timestamp':..}]
 def _tokens(title):
     """Normalize a title to an order-independent set of meaningful tokens."""
     words = re.split(r'[^0-9a-z]+', (title or '').lower())
+    filler = user_settings.get_filler_words()
     out = set()
     for w in words:
-        if not w or w in STOPWORDS or w in FILLER_WORDS:
+        if not w or w in STOPWORDS or w in filler:
             continue
         if re.fullmatch(r'(?:19|20)\d{2}', w):   # a year
             continue

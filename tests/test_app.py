@@ -658,3 +658,61 @@ def test_faq_page_renders(client):
     r = client.get("/faq")
     assert r.status_code == 200
     assert b"FAQ" in r.data
+
+
+# ── settings (user-editable text controls) ────────────────────────────────────
+
+@pytest.fixture
+def settings_isolated(tmp_path, monkeypatch):
+    from modules.config import user_settings as us
+    monkeypatch.setattr(us, "SETTINGS_FILE", str(tmp_path / "app_settings.json"))
+    us._settings = None
+    us.load_settings()
+    return us
+
+
+def test_settings_defaults_and_save(settings_isolated):
+    us = settings_isolated
+    assert "official" in us.get_filler_words()
+    us.save_settings({"filler_words": ["foo", "bar"], "char_replacements": [{"from": "&", "to": "and"}]})
+    assert us.get_filler_words() == {"foo", "bar"}
+    assert us.get_char_replacements() == [("&", "and")]
+
+
+def test_custom_filler_word_affects_remove_filler(pl_root, monkeypatch, tmp_path):
+    from modules.config import user_settings as us
+    monkeypatch.setattr(us, "SETTINGS_FILE", str(tmp_path / "s.json"))
+    us._settings = None
+    us.save_settings({"filler_words": ["banana"], "char_replacements": []})
+    p = _make_playlist(pl_root, "mix_playlist", ["Cool_Banana_Song.mp3", "keep.mp3"])
+    pl.apply_operation(p, "remove_filler")
+    assert "Cool Song.mp3" in os.listdir(p)   # 'banana' removed per custom setting
+    us._settings = None                        # reset cache for other tests
+
+
+def test_apply_replacements_operation(pl_root, monkeypatch, tmp_path):
+    from modules.config import user_settings as us
+    monkeypatch.setattr(us, "SETTINGS_FILE", str(tmp_path / "s.json"))
+    us._settings = None
+    us.save_settings({"filler_words": sorted(us.DEFAULT_FILLER_WORDS),
+                      "char_replacements": [{"from": "&", "to": "and"}]})
+    p = _make_playlist(pl_root, "mix_playlist", ["Rock & Roll.mp3", "keep.mp3"])
+    pl.apply_operation(p, "apply_replacements")
+    assert "Rock and Roll.mp3" in os.listdir(p)
+    us._settings = None
+
+
+def test_settings_api_roundtrip(client, tmp_path, monkeypatch):
+    from modules.config import user_settings as us
+    monkeypatch.setattr(us, "SETTINGS_FILE", str(tmp_path / "s.json"))
+    us._settings = None
+    r = client.post("/api/settings", json={"filler_words": ["xyz"], "char_replacements": []})
+    assert r.get_json()["filler_words"] == ["xyz"]
+    assert client.get("/api/settings").get_json()["filler_words"] == ["xyz"]
+    us._settings = None
+
+
+def test_settings_page_renders(client):
+    r = client.get("/settings")
+    assert r.status_code == 200
+    assert b"Settings" in r.data

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .set-wrap { max-width: 820px; margin: 0 auto; }
+    .set-card { background: #2a2f34; border: 1px solid #3a4046; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .set-card h2 { font-size: 1.05rem; color: #0d6efd; margin: 0 0 .35rem; }
+    .set-card p { color: #adb5bd; font-size: .85rem; }
+    #filler-words { min-height: 160px; font-family: monospace; font-size: .85rem; }
+    .repl-row { display: flex; gap: .5rem; align-items: center; margin-bottom: .4rem; }
+    .repl-row input { max-width: 240px; }
+    .repl-row .sep { color: #8b949e; }
+    #save-status { min-height: 1.2em; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 set-wrap">
+    <h1 class="display-6 fw-bold mb-2 text-center">Settings</h1>
+    <p class="text-center text-muted mb-4">These options drive the text-control operations on
+    the <b>Playlists</b> and <b>File Manager</b> pages (and duplicate detection).</p>
+
+    <div class="set-card">
+        <h2>Filler words</h2>
+        <p>Words removed by <b>Remove filler words</b> (and ignored when matching duplicates).
+        One per line or comma-separated. Case-insensitive.</p>
+        <textarea id="filler-words" class="form-control bg-dark text-light border-secondary"
+                  placeholder="official, video, remaster, live, 4k, hd, …"></textarea>
+    </div>
+
+    <div class="set-card">
+        <h2>Character replacements</h2>
+        <p>Replace text in filenames when you run the <b>Apply replacements</b> operation.
+        "Replace" can be left blank to simply delete the "Find" text.</p>
+        <div id="repl-list"></div>
+        <button class="btn btn-outline-light btn-sm mt-1" id="repl-add">
+            <i class="bi bi-plus-lg"></i> Add replacement
+        </button>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-primary" id="save-settings">Save settings</button>
+        <button class="btn btn-outline-secondary" id="reset-settings">Reset to defaults</button>
+        <span id="save-status" class="ms-2 small"></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+        function addReplRow(frm, to) {
+            const row = document.createElement('div');
+            row.className = 'repl-row';
+            row.innerHTML =
+                '<input type="text" class="form-control form-control-sm bg-dark text-light border-secondary repl-from" placeholder="Find" value="' + esc(frm || '') + '">'
+                + '<span class="sep">→</span>'
+                + '<input type="text" class="form-control form-control-sm bg-dark text-light border-secondary repl-to" placeholder="Replace with" value="' + esc(to || '') + '">'
+                + '<button class="btn btn-outline-danger btn-sm repl-del" title="Remove"><i class="bi bi-x-lg"></i></button>';
+            document.getElementById('repl-list').appendChild(row);
+        }
+
+        function collect() {
+            const words = document.getElementById('filler-words').value
+                .split(/[\n,]+/).map(w => w.trim()).filter(Boolean);
+            const repl = [];
+            document.querySelectorAll('#repl-list .repl-row').forEach(r => {
+                const frm = r.querySelector('.repl-from').value;
+                const to = r.querySelector('.repl-to').value;
+                if (frm) repl.push({ from: frm, to: to });
+            });
+            return { filler_words: words, char_replacements: repl };
+        }
+
+        function fill(data) {
+            document.getElementById('filler-words').value = (data.filler_words || []).join(', ');
+            const list = document.getElementById('repl-list');
+            list.innerHTML = '';
+            (data.char_replacements || []).forEach(r => addReplRow(r.from, r.to));
+            if (!(data.char_replacements || []).length) addReplRow('', '');
+        }
+
+        function load() {
+            fetch('/api/settings').then(r => r.json()).then(fill).catch(() => {});
+        }
+        function status(msg, ok) {
+            const s = document.getElementById('save-status');
+            s.className = 'ms-2 small ' + (ok ? 'text-success' : 'text-danger');
+            s.textContent = msg;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            load();
+            document.getElementById('repl-add').addEventListener('click', () => addReplRow('', ''));
+            document.getElementById('repl-list').addEventListener('click', function (e) {
+                const del = e.target.closest('.repl-del');
+                if (del) del.closest('.repl-row').remove();
+            });
+            document.getElementById('save-settings').addEventListener('click', function () {
+                fetch('/api/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(collect()),
+                }).then(r => r.json()).then(d => { fill(d); status('Saved. These apply to all text operations now.', true); })
+                  .catch(() => status('Save failed.', false));
+            });
+            document.getElementById('reset-settings').addEventListener('click', function () {
+                if (!confirm('Reset filler words and replacements to defaults?')) return;
+                fetch('/api/settings/reset', { method: 'POST' }).then(r => r.json())
+                    .then(d => { fill(d); status('Reset to defaults.', true); });
+            });
+        });
+    })();
+</script>
+{% endblock %}

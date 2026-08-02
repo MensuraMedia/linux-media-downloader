@@ -55,6 +55,11 @@ def information():
     """Render the information page"""
     return render_template('information.html')
 
+@ui_routes.route('/settings')
+def settings_page():
+    """Render the settings page (editable text-control options)"""
+    return render_template('settings.html')
+
 @ui_routes.route('/faq')
 def faq():
     """Render the FAQ / help page"""

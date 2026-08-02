@@ -68,3 +68,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-02T11:15:00 | Fix: split downloads now record the tracks folder in History (folder link opens the split folder, not the root); URL input auto-clears on completion |
 | 2026-08-02T12:00:00 | Feature: download queue — add links while one runs; they run one-after-another. New Pending page (/pending) + sidebar button showing queued/active/completed jobs |
 | 2026-08-02T12:10:00 | Home: adding a link while downloading now queues it (no error); progress follows each job (job_id); 'See your download here' link to History on completion; input clears on submit |
+| 2026-08-02T13:00:00 | Feature: Settings page — edit filler words + character replacements (modules/config/user_settings.py); drives Remove-filler + new 'Apply replacements' op across Playlists/File Manager; dedupe uses the same list |
+| 2026-08-02T13:10:00 | FAQ: documented all text-control operations with descriptions + the Settings/Pending pages |

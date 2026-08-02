@@ -89,22 +89,10 @@ LONG_SECONDS = 420
 TRUNCATE_LEN = 35
 
 # Common clutter words stripped by the "remove filler" operation (case-insensitive)
-FILLER_WORDS = {
-    'music', 'mix', 'remaster', 'remastered', 'live', '4k', '8k', 'hd', 'uhd',
-    'hq', 'original', 'remix', 'cover', 'official', 'video', 'audio', 'visualizer',
-    'lyric', 'lyrics', 'full', 'album', 'version', 'feat', 'ft', 'explicit',
-    'clean', 'mv', 'hq', 'edit', 'extended', 'radio',
-    # soundtrack / anime / release qualifiers
-    'ost', 'soundtrack', 'score', 'theme', 'ova', 'ona', 'amv', 'pv', 'op', 'ed',
-    'animated', 'animation', 'anime',
-    'instrumental', 'inst', 'nightcore', 'sped', 'slowed', 'reverb', '8d',
-    'bonus', 'deluxe', 'remux', 'bluray', 'bd', 'dvd', 'hdr',
-    '1080p', '720p', '480p', '2160p',
-    # months (full + abbreviations)
-    'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
-    'september', 'october', 'november', 'december',
-    'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
-}
+# Filler words are user-editable (Settings page); the effective set comes from
+# user_settings. FILLER_WORDS remains the built-in default (used as a fallback).
+from modules.config import user_settings
+FILLER_WORDS = user_settings.DEFAULT_FILLER_WORDS
 
 
 def _scan_dirs():
@@ -439,7 +427,14 @@ def _split_camel(token):
 
 def _is_filler_word(word):
     low = word.lower()
-    return low in FILLER_WORDS or bool(re.fullmatch(r'(?:19|20)\d{2}', low))
+    return low in user_settings.get_filler_words() or bool(re.fullmatch(r'(?:19|20)\d{2}', low))
+
+
+def _apply_replacements(base):
+    """Apply the user's configured character/string replacements to a name."""
+    for frm, to in user_settings.get_char_replacements():
+        base = base.replace(frm, to)
+    return base
 
 
 def _remove_filler(base):
@@ -610,6 +605,7 @@ def apply_operation(path, operation, record=True):
         'clean':          lambda b, i: os.path.splitext(sanitize_filename(b + '.x'))[0],
         'truncate':       lambda b, i: b[:TRUNCATE_LEN].strip(),
         'remove_filler':  lambda b, i: _remove_filler(b),
+        'apply_replacements': lambda b, i: _apply_replacements(b),
         'standard_font':  lambda b, i: _to_standard(b),
         'lower_case':     lambda b, i: b.lower(),
         'upper_case':     lambda b, i: b.upper(),

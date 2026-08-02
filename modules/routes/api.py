@@ -263,6 +263,28 @@ def add_to_folder_route():
     return jsonify(playlists.add_to_folder(data.get('path', ''), data.get('folder', '')))
 
 
+@api_routes.route('/api/settings')
+def get_settings_route():
+    """Return the user-editable text-control settings."""
+    from modules.config import user_settings
+    return jsonify(user_settings.get_settings())
+
+
+@api_routes.route('/api/settings', methods=['POST'])
+def save_settings_route():
+    """Save filler words + character replacements."""
+    from modules.config import user_settings
+    data = request.get_json() or {}
+    return jsonify(user_settings.save_settings(data))
+
+
+@api_routes.route('/api/settings/reset', methods=['POST'])
+def reset_settings_route():
+    """Reset text-control settings to defaults."""
+    from modules.config import user_settings
+    return jsonify(user_settings.save_settings(user_settings._defaults()))
+
+
 @api_routes.route('/api/open-folder', methods=['POST'])
 def api_open_folder():
     """Open a folder in the file explorer"""
