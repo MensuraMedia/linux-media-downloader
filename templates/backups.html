@@ -7,7 +7,10 @@
             {% if download_history %}
                 <div class="card bg-dark text-light border-secondary">
                     <div class="card-body">
-                        <h5 class="card-title mb-4">Download History</h5>
+                        <h5 class="card-title mb-3">Download History</h5>
+                        <input type="text" id="history-search"
+                               class="form-control bg-dark text-light border-secondary mb-3"
+                               placeholder="Search downloads…">
                         <div class="table-responsive">
                             <table class="table table-bordered progress-table">
                                 <thead>
@@ -65,6 +68,15 @@
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
         
+        // Filter history rows by title/path as you type
+        $('#history-search').on('input', function () {
+            const q = $(this).val().trim().toLowerCase();
+            $('.progress-table tbody tr').each(function () {
+                const txt = $(this).text().toLowerCase();
+                $(this).toggle(q === '' || txt.indexOf(q) !== -1);
+            });
+        });
+
         // Handle open folder click (event delegation, works for all rows)
         $(document).on('click', '.open-folder', function() {
             const folderPath = $(this).data('path');

@@ -37,11 +37,6 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="/backups" class="sidebar-link {% if request.path == '/backups' %}active{% else %}text-white{% endif %}">
-                                History
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
                             <a href="/playlists" class="sidebar-link {% if request.path == '/playlists' %}active{% else %}text-white{% endif %}">
                                 Playlists
                             </a>
@@ -57,8 +52,18 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
+                            <a href="/backups" class="sidebar-link {% if request.path == '/backups' %}active{% else %}text-white{% endif %}">
+                                History Downloads
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
                             <a href="/links" class="sidebar-link {% if request.path == '/links' %}active{% else %}text-white{% endif %}">
-                                Links
+                                History Links
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="/faq" class="sidebar-link {% if request.path == '/faq' %}active{% else %}text-white{% endif %}">
+                                FAQ
                             </a>
                         </li>
                         <li class="sidebar-item">

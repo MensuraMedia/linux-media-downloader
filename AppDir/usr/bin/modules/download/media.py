@@ -510,6 +510,15 @@ def _split_into_tracks(output_dir, meta, fallback_title):
             os.remove(src)  # keep only the split tracks
         except OSError:
             pass
+        # Point the History entry at the actual tracks folder (not the download root),
+        # so its "open folder" link lands where the split files really are.
+        try:
+            if download_history:
+                download_history[-1]['output_dir'] = tracks_dir
+                from modules.config.settings import save_download_history
+                save_download_history()
+        except Exception:
+            pass
     current_download.update({
         'status': 'completed',
         'completed_files': made,

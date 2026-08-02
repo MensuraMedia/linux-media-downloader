@@ -5,7 +5,7 @@
     .pl-wrap { max-width: 960px; margin: 0 auto; }
     .pl-card {
         display: flex; align-items: center; gap: 1rem;
-        background: #2a2f34; border: 1px solid #3a4046; border-radius: 10px;
+        background: #2a2f34; border: 1px solid #3a4046; border-radius: 0;
         padding: .75rem 1rem; margin-bottom: .6rem;
     }
     .pl-card:hover { background: #323841; }
@@ -70,12 +70,14 @@
 
     <!-- LIST VIEW -->
     <div id="pl-list-view">
-        <div class="d-flex align-items-center mb-2">
-            <div class="text-muted small" id="pl-count">Loading…</div>
-            <button class="btn btn-outline-secondary btn-sm ms-auto" id="pl-refresh">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
+        <div class="d-flex align-items-center mb-2 gap-2">
+            <input type="text" id="pl-search" class="form-control bg-dark text-light border-secondary"
+                   placeholder="Search playlists…">
+            <button class="btn btn-outline-secondary" id="pl-refresh" title="Refresh">
+                <i class="bi bi-arrow-clockwise"></i>
             </button>
         </div>
+        <div class="text-muted small mb-1" id="pl-count">Loading…</div>
         <div id="pl-list"></div>
     </div>
 
@@ -187,17 +189,28 @@
         }
 
         // ── List view ─────────────────────────────────────────────────────────
+        let plAll = [];
         function loadList() {
             document.getElementById('pl-count').textContent = 'Loading…';
             fetch('/api/playlists').then(r => r.json()).then(list => {
-                const el = document.getElementById('pl-list');
-                document.getElementById('pl-count').textContent =
-                    list.length + (list.length === 1 ? ' playlist' : ' playlists');
-                if (!list.length) {
-                    el.innerHTML = '<div class="pl-empty"><i class="bi bi-collection-play" style="font-size:2.5rem;"></i>'
-                        + '<p class="mt-2">No playlists found yet. Download a full playlist to see it here.</p></div>';
-                    return;
-                }
+                plAll = Array.isArray(list) ? list : [];
+                renderList();
+            }).catch(() => {
+                document.getElementById('pl-count').textContent = 'Failed to load playlists.';
+            });
+        }
+        function renderList() {
+            const q = (document.getElementById('pl-search').value || '').trim().toLowerCase();
+            const list = q ? plAll.filter(p => (p.name || '').toLowerCase().includes(q)) : plAll;
+            const el = document.getElementById('pl-list');
+            document.getElementById('pl-count').textContent =
+                list.length + (list.length === 1 ? ' playlist' : ' playlists');
+            if (!list.length) {
+                el.innerHTML = '<div class="pl-empty"><i class="bi bi-collection-play" style="font-size:2.5rem;"></i>'
+                    + '<p class="mt-2">No playlists found.</p></div>';
+                return;
+            }
+            {
                 el.innerHTML = list.map((p) => `
                     <div class="pl-card">
                         <label class="pl-seq" style="color:${esc(p.color || '#0d6efd')}" title="Click to pick a color">
@@ -220,9 +233,7 @@
                             </button>
                         </div>
                     </div>`).join('');
-            }).catch(() => {
-                document.getElementById('pl-count').textContent = 'Failed to load playlists.';
-            });
+            }
         }
 
         function renamePlaylist(path, name, thenOpenNew) {
@@ -353,6 +364,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             loadList();
             document.getElementById('pl-refresh').addEventListener('click', loadList);
+            document.getElementById('pl-search').addEventListener('input', renderList);
             document.getElementById('pl-back').addEventListener('click', backToList);
             document.getElementById('pl-rename-2').addEventListener('click', function () {
                 renamePlaylist(currentPath, document.getElementById('pl-detail-name').textContent, true);

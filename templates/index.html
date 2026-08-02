@@ -578,6 +578,14 @@
             });
         }
 
+        // Clear the URL box and reset playlist options after a finished download.
+        function clearLinkInput() {
+            $('#youtube-url').val('');
+            playlistDetected = false;
+            setPlaylistOptions(false);
+            updateDownloadButton();
+        }
+
         // Poll the server for download status and update the UI. Used by both a
         // freshly-started download and by reconnecting to one already in progress.
         function startStatusPolling() {
@@ -601,11 +609,13 @@
                             showSuccess('Backups Completed', '');
                             resetForm(); $('#cancel-download').addClass('d-none');
                             $('#table-loader').css('display', 'none');
+                            clearLinkInput();
                         } else if (data.status === 'completed_with_errors') {
                             clearInterval(statusIntervalId);
                             showWarning('Backups Completed', '');
                             resetForm(); $('#cancel-download').addClass('d-none');
                             $('#table-loader').css('display', 'none');
+                            clearLinkInput();
                         } else if (data.status === 'error') {
                             clearInterval(statusIntervalId);
                             showError(data.message || 'An error occurred during download.');

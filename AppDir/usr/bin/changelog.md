@@ -63,3 +63,6 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-02T09:00:00 | Docs: added INSTALL.md (full Linux + Windows setup) and ROADMAP.md (evolving product, categorized features); reinforced 'still evolving' language; fixed DOCUMENTATION roadmap (Chapter Split implemented) |
 | 2026-08-02T10:00:00 | Feature: Ignore Duplicates — skip already-downloaded/≥80%-similar tracks via an original-title+id manifest (modules/download/dedupe.py); Home checkbox; 71 tests |
 | 2026-08-02T10:15:00 | Packaging: one-command Debian/Ubuntu/Mint installer (install.sh) at top of README — installs deps, clones, venv, program-menu entry |
+| 2026-08-02T11:00:00 | UI: added FAQ page (features/choices/pages, split explanation); sidebar renamed History→History Downloads, Links→History Links, added FAQ, reordered near About, left-aligned |
+| 2026-08-02T11:10:00 | UI: squared corners on Playlists/Player/Links cards; added search to History + Playlists pages |
+| 2026-08-02T11:15:00 | Fix: split downloads now record the tracks folder in History (folder link opens the split folder, not the root); URL input auto-clears on completion |

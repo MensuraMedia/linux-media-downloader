@@ -16,3 +16,11 @@ Opportunities identified during the 2026-07-31 review but intentionally **not** 
   string splitting on `list=`. Consider `urllib.parse` for robustness.
 - [ ] **Blocking `time.sleep(1)`** in `app.py` before opening the window — could poll the
   server's readiness instead.
+
+## 2026-08-02 — Download state memory (needs a planning session)
+User reports navigating away from Home and back can still lose the in-progress download view
+in some cases (resumeActiveDownload reconnects only for starting/downloading/processing).
+Natural companion updates to design together: what to show for a download that FINISHED while
+away, persisting the last result across an app restart, and clearing/curating the progress
+table on a new download. Treat as a small design pass before implementing. (Input box now
+auto-clears on successful completion; that part is done.)

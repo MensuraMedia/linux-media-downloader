@@ -50,6 +50,11 @@ def information():
     """Render the information page"""
     return render_template('information.html')
 
+@ui_routes.route('/faq')
+def faq():
+    """Render the FAQ / help page"""
+    return render_template('faq.html')
+
 @ui_routes.route('/about')
 def about():
     """Render the about page"""

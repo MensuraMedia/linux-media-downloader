@@ -627,3 +627,9 @@ def test_download_accepts_ignore_dupes_param(client):
     settings.reset_cancel()
     r = client.post("/api/download", json={"url": "", "ignore_dupes": True})
     assert r.get_json().get("error")  # empty url still rejected -> param parsed fine
+
+
+def test_faq_page_renders(client):
+    r = client.get("/faq")
+    assert r.status_code == 200
+    assert b"FAQ" in r.data

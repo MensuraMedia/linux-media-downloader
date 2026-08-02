@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .faq-wrap { max-width: 900px; margin: 0 auto; }
+    .faq-wrap h2 { font-size: 1.15rem; color: #0d6efd; margin: 1.75rem 0 .5rem; }
+    .faq-wrap h3 { font-size: .98rem; color: #fff; margin: 1rem 0 .3rem; }
+    .faq-wrap p, .faq-wrap li { color: #cfd4da; line-height: 1.6; }
+    .faq-wrap code { color: #8ab4f8; background: #22282d; padding: 1px 5px; border-radius: 3px; }
+    .faq-wrap .lead { color: #adb5bd; }
+    .faq-wrap table { width: 100%; border-collapse: collapse; margin: .5rem 0 1rem; }
+    .faq-wrap th, .faq-wrap td { border: 1px solid #3a4046; padding: .4rem .6rem; text-align: left; vertical-align: top; }
+    .faq-wrap th { background: #2a2f34; color: #fff; font-size: .85rem; }
+    .faq-toc a { display: inline-block; margin: .15rem .5rem .15rem 0; color: #8ab4f8; font-size: .85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 faq-wrap">
+    <h1 class="display-6 fw-bold mb-3 text-center">FAQ &amp; Help</h1>
+    <p class="lead text-center">Everything the app does, how each choice works, and what every
+    page is for. This product is still evolving, so features may grow over time.</p>
+
+    <div class="faq-toc mb-3">
+        <strong>Jump to:</strong>
+        <a href="#what">What it is</a>
+        <a href="#download">Download choices</a>
+        <a href="#split">Split Multi-Chapter</a>
+        <a href="#pages">The pages</a>
+        <a href="#textops">Text operations</a>
+        <a href="#trouble">Troubleshooting</a>
+    </div>
+
+    <h2 id="what">What is Linux Media Downloader?</h2>
+    <p>A desktop app for saving YouTube media (audio or video, single tracks or whole
+    playlists) for personal use. It uses <code>yt-dlp</code> to download and <code>ffmpeg</code>
+    to convert/split. It runs as its own window (<code>app.py</code>) or in a browser
+    (<code>browser_app.py</code>).</p>
+
+    <h2 id="download">The download choices (Home page)</h2>
+    <p>Paste a YouTube link. If it's a playlist, extra options light up. The options are
+    grouped in three columns:</p>
+
+    <h3>Format</h3>
+    <table>
+        <tr><th>Choice</th><th>What it does</th></tr>
+        <tr><td><b>Audio</b></td><td>Downloads sound only and converts to MP3 (192 kbps).</td></tr>
+        <tr><td><b>Video</b></td><td>Downloads the full video as MP4.</td></tr>
+    </table>
+
+    <h3>Playlist</h3>
+    <table>
+        <tr><th>Choice</th><th>What it does</th></tr>
+        <tr><td><b>Single Video</b></td><td>Downloads just the one video, even if the link is part of a playlist/radio.</td></tr>
+        <tr><td><b>Skip long files (over 7 min)</b></td><td>While downloading a playlist, any track longer than 7 minutes is skipped and never downloaded.</td></tr>
+        <tr><td><b>Ignore Duplicates</b></td><td>Skips tracks you've already downloaded before. It matches by the video's id and by its <em>original</em> title (≥80% similar), so <code>Beach_Original_music</code> is recognized as the same as <code>Original Beach Music</code>. The app remembers what you've downloaded in a hidden list that builds automatically.</td></tr>
+        <tr><td><b>Split Multi-Chapter video</b></td><td>See the next section.</td></tr>
+    </table>
+
+    <h3>Amount</h3>
+    <table>
+        <tr><th>Choice</th><th>What it does</th></tr>
+        <tr><td><b>All (N videos)</b></td><td>Downloads the entire playlist (N = how many it found).</td></tr>
+        <tr><td><b>First 10 / 20 / 30</b></td><td>Downloads only the first N tracks of the playlist — nothing beyond that is queued.</td></tr>
+    </table>
+
+    <p>Playlist-only options stay visible but greyed out until a playlist is detected. Only
+    one download runs at a time; the destination folder defaults to your <code>~/Downloads</code>.</p>
+
+    <h2 id="split">How does "Split Multi-Chapter video" work?</h2>
+    <p>Some long videos (full albums, mixes, compilations) are actually many tracks in one
+    video. With this option checked:</p>
+    <ol>
+        <li>The app <b>downloads the single video locally first</b> (as one audio/video file).</li>
+        <li>It then reads the track boundaries — from the video's <b>embedded chapters</b> if
+        present, otherwise from a <b>timestamped tracklist in the description</b>.</li>
+        <li>It <b>splits that file into one file per track</b> using <code>ffmpeg</code>, and
+        places them in a new folder named after the video (ending in <code>_playlist</code>).</li>
+        <li>The original single file is removed, leaving just the individual tracks — which
+        then show up automatically under <b>Playlists</b> and <b>File Manager</b>.</li>
+    </ol>
+    <p>If a track has a chapter title, that becomes the filename; if a chapter has no title,
+    the file is named with a sequence number plus the video's title (e.g.
+    <code>03_Best_Of_The_80s.mp3</code>). If the video has no chapters and no tracklist,
+    nothing is split and the whole file is kept.</p>
+
+    <h2 id="pages">The pages (sidebar)</h2>
+    <table>
+        <tr><th>Page</th><th>What it's for</th></tr>
+        <tr><td><b>Home</b></td><td>Paste a link, pick your options, start a download, and watch live progress.</td></tr>
+        <tr><td><b>Playlists</b></td><td>Every playlist folder you've downloaded. Rename it, sort its files by length/name/size, and run bulk text operations. Each playlist has a fixed number badge whose colour you can pick.</td></tr>
+        <tr><td><b>Player</b></td><td>Play any downloaded file (audio or video) with seek, volume, skip and auto-next. Delete a file you don't want, or "Add to folder" to curate a new playlist as you listen.</td></tr>
+        <tr><td><b>File Manager</b></td><td>A dense grid of every file the app downloaded, with stats (how many duplicate names, how many share the same size). Run text operations across all files, play any file with keyboard controls (→ +5s, ← −2s, ↑/↓ volume, Delete = stop &amp; delete), or delete individually.</td></tr>
+        <tr><td><b>History Downloads</b></td><td>A list of completed downloads, newest first, with a link that opens the exact folder the files went to.</td></tr>
+        <tr><td><b>History Links</b></td><td>A scrollable record of every link you've submitted, with thumbnails — search it, copy a link, or re-use one.</td></tr>
+        <tr><td><b>FAQ</b></td><td>This page.</td></tr>
+        <tr><td><b>About</b></td><td>App info and licensing.</td></tr>
+    </table>
+
+    <h2 id="textops">Text operations (Playlists &amp; File Manager)</h2>
+    <p>These rename or tidy your files in bulk. Every rename keeps names unique (a short salt
+    is added on a clash), and everything is <b>undoable</b> (Delete moves files to a
+    <code>.trash</code> folder you can empty later).</p>
+    <table>
+        <tr><th>Operation</th><th>Effect</th></tr>
+        <tr><td>Clean up names</td><td>Strip special characters and tidy spacing.</td></tr>
+        <tr><td>Remove special characters</td><td>Keep letters, numbers, spaces, dashes.</td></tr>
+        <tr><td>Replace spaces with underscores</td><td><code>My Song</code> → <code>My_Song</code>.</td></tr>
+        <tr><td>Remove filler words</td><td>Drop clutter like <em>official, video, remaster, live, 4k, hd, OST, anime, months, years…</em> (even when glued in CamelCase).</td></tr>
+        <tr><td>Truncate to 35</td><td>Shorten long names to 35 characters.</td></tr>
+        <tr><td>Standard font</td><td>Convert fancy/accented characters to plain ASCII.</td></tr>
+        <tr><td>Abbreviate duplicates</td><td>Shorten words that repeat across many files (<code>Predator_Soundtrack_Track01</code> → <code>Pred_Soun_Track01</code>).</td></tr>
+        <tr><td>Add number prefix</td><td>Prepend <code>01_</code>, <code>02_</code>, …</td></tr>
+        <tr><td>lower / UPPER / Title / Camel</td><td>Change the casing of every word.</td></tr>
+        <tr><td>Delete all long files (&gt;7 min)</td><td>Move over-long files to trash (recoverable).</td></tr>
+    </table>
+
+    <h2 id="trouble">Troubleshooting</h2>
+    <table>
+        <tr><th>Problem</th><th>Fix</th></tr>
+        <tr><td>"Sign in to confirm you're not a bot"</td><td>YouTube is rate-limiting your network; browser-cookie support is planned.</td></tr>
+        <tr><td>Audio won't convert / split does nothing</td><td><code>ffmpeg</code> isn't installed or not on PATH.</td></tr>
+        <tr><td>Downloads suddenly stop working</td><td>Update yt-dlp: <code>pip install -U yt-dlp</code> (it changes often).</td></tr>
+        <tr><td>No window on a server</td><td>No display — use browser mode (<code>browser_app.py</code>).</td></tr>
+    </table>
+    <p class="text-muted mt-3">For install steps see INSTALL.md; for the full technical
+    reference see DOCUMENTATION.md; for what's coming next see ROADMAP.md.</p>
+</div>
+{% endblock %}

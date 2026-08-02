@@ -62,12 +62,12 @@ body {
 
 /* Updated button styles - more minimal and less thick */
 .sidebar-link {
-    display: block;
+    display: flex;
     width: 100%;
     color: #bbb;
     text-decoration: none;
-    padding: 8px 0;  /* Reduced padding from 12px to 8px */
-    text-align: center; display: flex; justify-content: center; align-items: center;
+    padding: 8px 0 8px 22px;  /* left buffer: slightly left-aligned, not flush */
+    text-align: left; justify-content: flex-start; align-items: center;
     transition: all 0.3s;
     font-size: 0.8rem;  /* Slightly smaller font */
     letter-spacing: 0.03rem;  /* Subtle letter spacing for cleaner look */
