@@ -468,8 +468,11 @@ the ffmpeg-bundling requirement — see [docs/packaging.md](docs/packaging.md).
 | Native window (`app.py`) needs a display | Use `browser_app.py` when headless |
 | Integration test with a real download + CI | Planned |
 | **File Manager** (dense grid of app files, stats, global text ops, inline keyboard player) | Implemented — see §7.8 |
+| **Chapter / Tracklist Split** (split a long video into per-track files) | Implemented — see §7.2 (ffmpeg `-c copy`, embedded chapters or description tracklist) |
 | **Ignore Duplicates** (skip already-downloaded / ≥80%-similar tracks via an originals manifest) | Concept — see [docs/concept-ignore-duplicates.md](docs/concept-ignore-duplicates.md) |
-| **Chapter / Tracklist Split** (split a long video into per-track files) | Concept — see [docs/concept-chapter-split.md](docs/concept-chapter-split.md) (recommends ffmpeg `-c copy` post-hoc, hybrid source) |
+
+**This product is still evolving.** For the full categorized roadmap (shipped / designed /
+planned / ideas) see [ROADMAP.md](ROADMAP.md). Setup for Linux & Windows: [INSTALL.md](INSTALL.md).
 
 ---
 

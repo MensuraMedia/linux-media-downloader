@@ -36,9 +36,10 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 
 ## 🚧 Project Status
 
-- **In Development** — functional but evolving; expect frequent updates.
+- **In Development** — this product is **still evolving**; it's under active development and
+  grows over time, so expect frequent updates and refinements. See **[ROADMAP.md](ROADMAP.md)**.
 - **Current support** — YouTube videos and playlists, powered by `yt-dlp`.
-- **Planned** — additional sources (Vimeo, SoundCloud, …), richer backup/restore.
+- **Setup** — full install steps for **Linux and Windows** are in **[INSTALL.md](INSTALL.md)**.
 
 ---
 
@@ -175,6 +176,9 @@ It launches `app.py` as a native window (min/maximize/close controls); closing e
 
 ## 📦 Installation
 
+> Quick start below. For **full Linux + Windows setup** (system deps, GUI backend, menu
+> entry, Start-menu shortcut, troubleshooting) see **[INSTALL.md](INSTALL.md)**.
+
 ```bash
 git clone https://github.com/MensuraMedia/linux-media-downloader.git
 cd linux-media-downloader
@@ -299,13 +303,13 @@ folder if needed) to keep user-level apps organized.
 
 ## 🛣️ Roadmap
 
-- [ ] Support additional sources (Vimeo, SoundCloud, …)
-- [ ] Enhanced backup and restore
-- [ ] Improved error handling and reporting
-- [ ] Optional user authentication
-- [ ] More customization options
-- [ ] Automated integration test + CI
-- [ ] Anchor data/download paths to a fixed app-data directory (independent of `cwd`)
+> **This product is still evolving.** It's under active development and grows over time —
+> features are added and refined based on real use. The full, categorized roadmap (shipped /
+> designed / planned / ideas) lives in **[ROADMAP.md](ROADMAP.md)**.
+
+Highlights of what's coming: packaged installers (AppImage / .deb / Windows `.exe`),
+one-line `pipx` install, **Ignore Duplicates**, YouTube cookie support, a fixed app-data
+directory, more sources (Vimeo, SoundCloud), and CI. See [ROADMAP.md](ROADMAP.md) for the rest.
 
 ---
 
