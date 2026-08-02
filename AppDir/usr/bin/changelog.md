@@ -70,3 +70,4 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-02T12:10:00 | Home: adding a link while downloading now queues it (no error); progress follows each job (job_id); 'See your download here' link to History on completion; input clears on submit |
 | 2026-08-02T13:00:00 | Feature: Settings page — edit filler words + character replacements (modules/config/user_settings.py); drives Remove-filler + new 'Apply replacements' op across Playlists/File Manager; dedupe uses the same list |
 | 2026-08-02T13:10:00 | FAQ: documented all text-control operations with descriptions + the Settings/Pending pages |
+| 2026-08-02T14:00:00 | Packaging: added packaging/build-deb.sh — builds a valid .deb (/opt install, launcher, menu entry, icon; postinst venv w/ yt-dlp/pywebview). Verified with dpkg-deb; build/ + dist/ git-ignored |

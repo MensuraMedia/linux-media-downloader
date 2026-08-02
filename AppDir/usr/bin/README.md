@@ -310,6 +310,9 @@ Ubuntu, Mint, and similar distributions.
 **Recommended storage location:** keep the built AppImage in `~/Applications` (create the
 folder if needed) to keep user-level apps organized.
 
+> **Build a .deb** (Debian/Ubuntu/Mint): `./packaging/build-deb.sh` → install with
+> `sudo apt install ./dist/linux-media-downloader_1.0.0_all.deb`.
+>
 > **Full packaging guide** — Linux (pipx-from-git, AppImage, .deb, Flatpak) and Windows
 > (PyInstaller): see [docs/packaging.md](docs/packaging.md).
 

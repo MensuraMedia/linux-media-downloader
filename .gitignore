@@ -33,3 +33,7 @@ data/*.json
 
 # AppDir build cruft
 AppDir/usr/bin/__pycache__/
+
+# Packaging build artifacts
+build/
+dist/

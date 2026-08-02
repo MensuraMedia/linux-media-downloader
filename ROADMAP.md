@@ -35,8 +35,9 @@ Legend: ✅ shipped · 🧭 designed (concept doc) · 🛠️ planned · 💡 id
 
 ## 🛠️ Planned
 
-- **Packaged builds** — finish the AppImage, add a `.deb`, and a Windows PyInstaller `.exe`
-  (+ installer), published on GitHub Releases. → [docs/packaging.md](docs/packaging.md)
+- **Packaged builds** — `.deb` builder shipped (`packaging/build-deb.sh`); still to do: finish
+  the AppImage, a Windows PyInstaller `.exe` (+ installer), and auto-publish to GitHub
+  Releases (CI). → [docs/packaging.md](docs/packaging.md)
 - **`pyproject.toml`** — enable `pipx install git+…` one-line installs.
 - **Fixed app-data directory** — store history/config/downloads under a stable location
   (`~/.local/share/linux-media-downloader`) instead of the working directory.

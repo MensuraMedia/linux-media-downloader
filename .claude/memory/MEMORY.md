@@ -7,6 +7,7 @@
 
 ## Changes
 <!-- Add newest first -->
+- [2026-08-02 deb package](changes/2026-08-02_deb-package.md) — .deb builder (packaging/build-deb.sh); /opt install, launcher, menu, postinst venv
 - [2026-08-02 settings page](changes/2026-08-02_settings-page.md) — User-editable filler words + char replacements; Apply-replacements op; FAQ text-ops
 - [2026-08-02 download queue + pending](changes/2026-08-02_download-queue-pending.md) — Queue links while one runs; Pending page
 - [2026-08-02 ignore-dupes + debian install](changes/2026-08-02_ignore-dupes-and-debian-install.md) — Ignore Duplicates (original-name+id manifest); one-command install.sh for Debian

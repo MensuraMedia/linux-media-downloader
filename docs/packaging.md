@@ -135,22 +135,29 @@ exec "$HERE/usr/bin/python3" "$HERE/usr/bin/app.py" "$@"
 - ✅ No install, portable across distros; store in `~/Applications`.
 - ⚠️ Largest artifact; must bundle a GUI/WebKit backend for PyWebView.
 
-### 2C. .deb package  ← standard Debian/Ubuntu/Mint install
+### 2C. .deb package  ← standard Debian/Ubuntu/Mint install  ✅ IMPLEMENTED
 
-Native install that integrates into the app menu and declares dependencies.
+**Build it:**
+```bash
+./packaging/build-deb.sh        # → dist/linux-media-downloader_1.0.0_all.deb
+sudo apt install ./dist/linux-media-downloader_1.0.0_all.deb
+```
 
-Layout:
-```
-mbs_1.0.0/
-├── DEBIAN/control          # Depends: python3, python3-flask, ffmpeg, gir1.2-webkit2-4.1
-├── usr/lib/mbs/…           # the app
-├── usr/bin/mbs             # launcher shim -> python3 /usr/lib/mbs/app.py
-└── usr/share/applications/linux-media-downloader.desktop
-```
-Build: `dpkg-deb --build mbs_1.0.0` → `sudo apt install ./mbs_1.0.0.deb`.
-- ✅ Feels native; `apt` resolves ffmpeg/webkit automatically.
-- ⚠️ Debian-family only; `yt-dlp` from apt lags upstream — pin via pip in a venv or
-  `Recommends` the pip install (yt-dlp changes fast; a stale one breaks downloads).
+What the package does (`packaging/build-deb.sh`):
+- Installs the app under `/opt/linux-media-downloader`, adds `/usr/bin/linux-media-downloader`
+  (a launcher that runs the app but keeps user data under
+  `~/.local/share/linux-media-downloader`), a menu entry, and the icon.
+- `Depends:` `python3 (>=3.8), python3-venv, python3-pip, ffmpeg, python3-gi,
+  python3-gi-cairo, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0` — so `apt` pulls ffmpeg and the
+  WebKit GUI backend automatically.
+- **postinst** creates a venv (`--system-site-packages`, so PyGObject/WebKit come from apt)
+  and `pip install`s `Flask`, `yt-dlp`, `pywebview` — keeping `yt-dlp` current instead of a
+  stale apt version. **prerm** removes that venv on uninstall.
+- Architecture `all` (pure Python). Build artifacts land in `build/` and `dist/` (git-ignored);
+  publish the `.deb` on the GitHub **Releases** page.
+
+- ✅ Feels native; menu integration + dependency resolution via `apt`.
+- ⚠️ postinst needs network (to pip-install yt-dlp/pywebview) and Debian-family only.
 
 ### 2D. Flatpak / Snap  ← sandboxed, cross-distro, auto-updating
 
