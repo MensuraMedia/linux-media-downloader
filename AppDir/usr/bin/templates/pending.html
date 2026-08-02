@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .pending-wrap { max-width: 900px; margin: 0 auto; }
+    .q-row {
+        display: flex; align-items: center; gap: .75rem;
+        background: #2a2f34; border: 1px solid #3a4046; padding: .6rem .9rem; margin-bottom: .5rem;
+    }
+    .q-badge {
+        flex-shrink: 0; font-size: .7rem; text-transform: uppercase; letter-spacing: .5px;
+        padding: 2px 8px; border-radius: 3px; min-width: 88px; text-align: center;
+    }
+    .q-active    { background:#123a4a; color:#bfe9ff; }
+    .q-queued    { background:#22282d; color:#adb5bd; border:1px solid #3a4046; }
+    .q-completed { background:#0f3d24; color:#b6f0cf; }
+    .q-completed_with_errors { background:#3b360d; color:#f3eccf; }
+    .q-error, .q-cancelled { background:#4a1414; color:#ffc9c9; }
+    .q-info { flex:1 1 auto; min-width:0; }
+    .q-title { color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .q-url { color:#8ab4f8; font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .q-time { color:#8b949e; font-size:.72rem; flex-shrink:0; }
+    .pending-empty { text-align:center; color:#8b949e; padding:3.5rem 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pending-wrap">
+    <h1 class="display-6 fw-bold mb-4 text-center">Pending</h1>
+    <div class="d-flex align-items-center mb-2 gap-2">
+        <div class="text-muted small" id="q-count">Loading…</div>
+        <button class="btn btn-outline-secondary btn-sm ms-auto" id="q-refresh" title="Refresh">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" id="q-clear" title="Clear finished">
+            <i class="bi bi-trash"></i> Clear finished
+        </button>
+    </div>
+    <div id="q-list"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+        function label(st){ return (st||'').replace(/_/g,' '); }
+
+        function render(list) {
+            const el = document.getElementById('q-list');
+            const active = list.filter(j => j.status === 'active').length;
+            const queued = list.filter(j => j.status === 'queued').length;
+            document.getElementById('q-count').textContent =
+                `${list.length} job(s) · ${active} active · ${queued} queued`;
+            if (!list.length) {
+                el.innerHTML = '<div class="pending-empty"><i class="bi bi-list-task" style="font-size:2.5rem;"></i>'
+                    + '<p class="mt-2">No downloads queued. Add links from the Home page — they run one after another.</p></div>';
+                return;
+            }
+            // Active + queued first (in order), then finished
+            const order = { active: 0, queued: 1, processing: 0 };
+            const sorted = list.slice().sort((a, b) => (order[a.status] ?? 2) - (order[b.status] ?? 2) || a.id - b.id);
+            el.innerHTML = sorted.map(j => `
+                <div class="q-row">
+                    <span class="q-badge q-${esc(j.status)}">${esc(label(j.status))}</span>
+                    <div class="q-info">
+                        <div class="q-title">${esc(j.title || j.url)}</div>
+                        <a class="q-url" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.url)}</a>
+                    </div>
+                    <span class="q-time">${esc((j.download_type||'') + (j.playlist_mode==='playlist'?' · playlist':''))}</span>
+                </div>`).join('');
+        }
+        function load() {
+            fetch('/api/queue').then(r => r.json()).then(render)
+                .catch(() => { document.getElementById('q-count').textContent = 'Failed to load queue.'; });
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            load();
+            document.getElementById('q-refresh').addEventListener('click', load);
+            document.getElementById('q-clear').addEventListener('click', function () {
+                fetch('/api/clear-queue-finished', { method: 'POST' }).then(r => r.json()).then(load);
+            });
+            // Auto-refresh so progress through the queue is visible live
+            setInterval(load, 2000);
+        });
+    })();
+</script>
+{% endblock %}

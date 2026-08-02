@@ -40,6 +40,11 @@ def player():
     """Render the media player / curation page"""
     return render_template('player.html')
 
+@ui_routes.route('/pending')
+def pending():
+    """Render the pending downloads (queue) page"""
+    return render_template('pending.html')
+
 @ui_routes.route('/file-manager')
 def file_manager():
     """Render the file manager page"""

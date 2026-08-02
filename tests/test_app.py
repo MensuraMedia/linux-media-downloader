@@ -132,14 +132,39 @@ def test_download_requires_url(client):
     assert client.post("/api/download", json={}).get_json().get("error")
 
 
-def test_download_rejected_when_already_active(client):
-    """A second download must be refused while one is running (no thread spawned)."""
+def test_download_queued_when_already_active(client):
+    """A second download is queued (not rejected) while one is running."""
     settings.current_download["status"] = "downloading"
+    settings.download_queue.clear()
     try:
         r = client.post("/api/download", json={"url": "https://example.com/x"})
-        assert "already in progress" in (r.get_json().get("error") or "")
+        data = r.get_json()
+        assert data.get("status") == "queued"          # queued, not started/rejected
+        assert data.get("position") == 1
+        assert settings.download_queue[-1]["status"] == "queued"  # no thread spawned
     finally:
         settings.current_download["status"] = None
+        settings.download_queue.clear()
+
+
+def test_queue_api_lists_jobs(client):
+    settings.current_download["status"] = "downloading"
+    settings.download_queue.clear()
+    try:
+        client.post("/api/download", json={"url": "https://example.com/a"})
+        client.post("/api/download", json={"url": "https://example.com/b"})
+        q = client.get("/api/queue").get_json()
+        assert [j["url"] for j in q] == ["https://example.com/a", "https://example.com/b"]
+        assert client.get("/api/download-status").get_json()["queue_pending"] == 2
+    finally:
+        settings.current_download["status"] = None
+        settings.download_queue.clear()
+
+
+def test_pending_page_renders(client):
+    r = client.get("/pending")
+    assert r.status_code == 200
+    assert b"Pending" in r.data
 
 
 def test_download_status_ok(client):

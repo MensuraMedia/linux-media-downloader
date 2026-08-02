@@ -189,6 +189,7 @@
         let expectedFiles = []; // Track all expected files
         let downloadedFiles = []; // Track downloaded files
         let playlistDetected = false; // Whether the current URL is a playlist
+        let lastJobId = null;         // job id currently reflected in the progress UI
         
         // Playlist-only controls start disabled/grayed until a playlist is found
         setPlaylistOptions(false);
@@ -405,146 +406,19 @@
             });
         }
         
-        // Start download
+        // Start / queue a download. Adding a link while one runs queues it (see Pending).
         $('#start-download').click(function() {
             const url = $('#youtube-url').val().trim();
             let folderPath = $('#folder-path').val().trim();
             const downloadType = $('input[name="download-type"]:checked').val();
-            
-            // Use default path if not provided
-            if (!folderPath) {
-                folderPath = default_download_path;
-                $('#folder-path').val(folderPath);
-            }
-            
+            if (!folderPath) { folderPath = default_download_path; $('#folder-path').val(folderPath); }
             if (!url) return;
+            const playlistMode = getScope().mode;
 
-            // Derive playlist mode + limit from the unified scope selection
-            let playlistMode = getScope().mode;
-            
-            // Show the table loader
             $('#table-loader').css('display', 'flex');
-            
-            // Get info about the URL to set up the table
-            fetch('/api/check-url', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url: url }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Reset tracking arrays
-                expectedFiles = [];
-                downloadedFiles = [];
-                
-                // Clear the table
-                $('#progress-table-body').empty();
-                
-                if (data.is_playlist && playlistMode === 'playlist') {
-                    // Build only as many rows as will actually be downloaded:
-                    // the whole playlist for "All", or just the top-N for "First N".
-                    const scopeLimit = getScope().limit;
-                    let entries = data.entries || 1;
-                    if (scopeLimit > 0) entries = Math.min(entries, scopeLimit);
-                    for (let i = 0; i < entries; i++) {
-                        const videoNumber = i + 1;
-                        expectedFiles.push({
-                            index: i,
-                            filename: `Video ${videoNumber}`,
-                            progress: 0
-                        });
-                        
-                        // Add row with video number
-                        $('#progress-table-body').append(`
-                            <tr id="file-row-${i}">
-                                <td class="length-cell">
-                                    <span class="length-number">—</span>
-                                </td>
-                                <td class="file-name-cell">Video ${videoNumber}</td>
-                            </tr>
-                        `);
-                    }
-                } else {
-                    // Single video
-                    const videoTitle = data.title || "Video download";
-                    expectedFiles.push({
-                        index: 0,
-                        filename: videoTitle,
-                        progress: 0
-                    });
-                    
-                    // Add row with video title
-                    $('#progress-table-body').append(`
-                        <tr id="file-row-0">
-                            <td class="length-cell">
-                                <span class="length-number">—</span>
-                            </td>
-                            <td class="file-name-cell">${videoTitle}</td>
-                        </tr>
-                    `);
-                }
-                
-                // Show the progress table, but keep the loader visible
-                // Do not hide the table loader here - keep it visible until download starts
-                $('#progress-table-container').show();
-                
-                // Start the download
-                startDownload(url, folderPath, downloadType, playlistMode);
-            })
-            .catch(error => {
-                console.error('Error checking URL:', error);
-                
-                // Hide the table loader on error
-                $('#table-loader').css('display', 'none');
-                
-                // Fallback to single row
-                expectedFiles = [{
-                    index: 0,
-                    filename: "Video download",
-                    progress: 0
-                }];
-                
-                // Add placeholder row
-                $('#progress-table-body').empty();
-                $('#progress-table-body').append(`
-                    <tr id="file-row-0">
-                        <td class="length-cell">
-                            <span class="length-number">—</span>
-                        </td>
-                        <td class="file-name-cell">Waiting...</td>
-                    </tr>
-                `);
-                
-                // Show the table
-                $('#progress-table-container').show();
-                
-                // Start the download
-                startDownload(url, folderPath, downloadType, playlistMode);
-            });
-        });
-
-        // Function to start the actual download process
-        function startDownload(url, folderPath, downloadType, playlistMode) {
-            // Reset progress circle
-            updateCircleProgress('total-progress-circle', 'total-progress-text', 0);
-            $('#playlist-name').text('-');
-            $('#playlist-progress-text').text('0 of 0 files completed');
-            $('#playlist-progress-container').hide();
-            $('#status-message').html('');
-            
-            // Disable form elements during download
-            $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-scope"], #start-download').prop('disabled', true);
-            
-            // Keep table loader visible until we start getting actual download updates
-            
-            // Start download
             fetch('/api/download', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     url: url,
                     output_dir: folderPath,
@@ -559,26 +433,29 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'started') {
+                    lastJobId = null;              // force the poller to (re)build the table
+                    $('#progress-table-container').show();
                     startStatusPolling();
+                } else if (data.status === 'queued') {
+                    $('#table-loader').css('display', 'none');
+                    showInfo('Added to the queue (position ' + data.position + '). '
+                        + 'It will run after the current download — see the <a href="/pending">Pending</a> page.');
+                    if (!statusIntervalId) startStatusPolling();
                 } else {
-                    // Hide table loader on error / rejection (e.g. already in progress)
                     $('#table-loader').css('display', 'none');
                     showError(data.error || 'Failed to start download');
-                    resetForm();
                     $('#progress-table-container').hide();
                 }
+                // Clear the box so another link can be added (queued) right away.
+                clearLinkInput();
             })
             .catch(error => {
-                // Hide table loader on error
                 $('#table-loader').css('display', 'none');
-                
                 showError('Error starting download: ' + error);
-                resetForm();
-                $('#progress-table-container').hide();
             });
-        }
+        });
 
-        // Clear the URL box and reset playlist options after a finished download.
+        // Clear the URL box + reset playlist options so another link can be added.
         function clearLinkInput() {
             $('#youtube-url').val('');
             playlistDetected = false;
@@ -586,84 +463,88 @@
             updateDownloadButton();
         }
 
-        // Poll the server for download status and update the UI. Used by both a
-        // freshly-started download and by reconnecting to one already in progress.
+        // Build the progress table from a status snapshot (used for a new/active job).
+        function buildTableFromStatus(data) {
+            expectedFiles = []; downloadedFiles = [];
+            $('#progress-table-body').empty();
+            const total = data.total_files || 1;
+            if (data.is_playlist && total > 1) {
+                for (let i = 0; i < total; i++) {
+                    expectedFiles.push({ index: i, filename: `Video ${i + 1}`, progress: 0 });
+                    $('#progress-table-body').append(
+                        `<tr id="file-row-${i}"><td class="length-cell"><span class="length-number">—</span></td>`
+                        + `<td class="file-name-cell">Video ${i + 1}</td></tr>`);
+                }
+            } else {
+                const title = getDisplayName(data.playlist_title || data.current_file || 'Video download');
+                expectedFiles.push({ index: 0, filename: title, progress: 0 });
+                $('#progress-table-body').append(
+                    `<tr id="file-row-0"><td class="length-cell"><span class="length-number">—</span></td>`
+                    + `<td class="file-name-cell">${title}</td></tr>`);
+            }
+            $('#progress-table-container').show();
+        }
+
+        // Poll download status; rebuild the table when a new queued job starts; when the
+        // whole queue is drained, show completion + a link to the download.
         function startStatusPolling() {
             if (statusIntervalId) clearInterval(statusIntervalId);
-            let downloadStarted = false;
             statusIntervalId = setInterval(function () {
                 fetch('/api/download-status')
                     .then(response => response.json())
                     .then(data => {
-                        if (!downloadStarted && data.current_file) {
-                            downloadStarted = true;
-                            $('#table-loader').css('display', 'none');
+                        const active = ['starting', 'downloading', 'processing'].includes(data.status);
+                        if (active && data.job_id != null && data.job_id !== lastJobId) {
+                            lastJobId = data.job_id;         // a (new) job is running -> fresh table
+                            buildTableFromStatus(data);
+                            $('#status-message').html('');
+                            $('#cancel-download').removeClass('d-none');
                         }
+                        if (active && data.current_file) $('#table-loader').css('display', 'none');
+
                         updateProgressUI(
                             data.total_progress, data.current_file, data.total_files,
                             data.completed_files, data.playlist_title, data.is_playlist,
                             data.status, data);
 
-                        if (data.status === 'completed') {
-                            clearInterval(statusIntervalId);
-                            showSuccess('Backups Completed', '');
-                            resetForm(); $('#cancel-download').addClass('d-none');
+                        const finished = ['completed', 'completed_with_errors', 'error', 'cancelled'].includes(data.status);
+                        if (finished && (data.queue_pending || 0) > 0) {
+                            // More jobs queued — keep polling; the next one will start shortly.
+                            $('#table-loader').css('display', 'flex');
+                            return;
+                        }
+                        if (data.status === 'completed' || data.status === 'completed_with_errors') {
+                            clearInterval(statusIntervalId); statusIntervalId = null;
+                            if (data.status === 'completed') showSuccess('Backups Completed', '');
+                            else showWarning('Backups Completed', '');
+                            $('#status-message').append('<div class="mt-2"><a href="/backups">See your download here →</a></div>');
+                            $('#cancel-download').addClass('d-none');
                             $('#table-loader').css('display', 'none');
-                            clearLinkInput();
-                        } else if (data.status === 'completed_with_errors') {
-                            clearInterval(statusIntervalId);
-                            showWarning('Backups Completed', '');
-                            resetForm(); $('#cancel-download').addClass('d-none');
-                            $('#table-loader').css('display', 'none');
-                            clearLinkInput();
                         } else if (data.status === 'error') {
-                            clearInterval(statusIntervalId);
+                            clearInterval(statusIntervalId); statusIntervalId = null;
                             showError(data.message || 'An error occurred during download.');
-                            resetForm(); $('#cancel-download').addClass('d-none');
-                            $('#progress-table-container').hide();
+                            $('#cancel-download').addClass('d-none');
                             $('#table-loader').css('display', 'none');
                         } else if (data.status === 'cancelled') {
-                            clearInterval(statusIntervalId);
-                            resetForm(); $('#cancel-download').addClass('d-none');
+                            clearInterval(statusIntervalId); statusIntervalId = null;
+                            $('#cancel-download').addClass('d-none');
                             $('#table-loader').css('display', 'none');
                         }
                     })
-                    .catch(error => {
-                        console.error('Error checking status:', error);
-                        $('#table-loader').css('display', 'none');
-                    });
+                    .catch(error => { console.error('Error checking status:', error); });
             }, 500);
-            $('#cancel-download').removeClass('d-none');
         }
 
-        // On page load, reconnect to a download already running in the background
-        // (so navigating away and back to Home shows the live status).
+        // On page load, reconnect to a download already running in the background.
         function resumeActiveDownload() {
             fetch('/api/download-status')
                 .then(response => response.json())
                 .then(data => {
                     if (!['starting', 'downloading', 'processing'].includes(data.status)) return;
-                    expectedFiles = []; downloadedFiles = [];
-                    $('#progress-table-body').empty();
-                    const total = data.total_files || 1;
-                    if (data.is_playlist && total > 1) {
-                        for (let i = 0; i < total; i++) {
-                            expectedFiles.push({ index: i, filename: `Video ${i + 1}`, progress: 0 });
-                            $('#progress-table-body').append(
-                                `<tr id="file-row-${i}"><td class="length-cell"><span class="length-number">—</span></td>`
-                                + `<td class="file-name-cell">Video ${i + 1}</td></tr>`);
-                        }
-                    } else {
-                        const title = getDisplayName(data.playlist_title || data.current_file || 'Video download');
-                        expectedFiles.push({ index: 0, filename: title, progress: 0 });
-                        $('#progress-table-body').append(
-                            `<tr id="file-row-0"><td class="length-cell"><span class="length-number">—</span></td>`
-                            + `<td class="file-name-cell">${title}</td></tr>`);
-                    }
-                    $('#progress-table-container').show();
-                    // Lock the form while the existing download runs
-                    $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-scope"], #start-download').prop('disabled', true);
+                    lastJobId = data.job_id != null ? data.job_id : -1;
+                    buildTableFromStatus(data);
                     $('#status-message').html('<div class="text-info">Reconnected to a download already in progress…</div>');
+                    $('#cancel-download').removeClass('d-none');
                     startStatusPolling();
                 })
                 .catch(() => {});
@@ -794,6 +675,11 @@
                     <strong>${message}</strong> ${subMessage ? subMessage : ''}
                 </div>
             `);
+        }
+
+        // Show an informational message (e.g. "added to queue")
+        function showInfo(html) {
+            $('#status-message').html(`<div class="text-info">${html}</div>`);
         }
 
         // Show warning message

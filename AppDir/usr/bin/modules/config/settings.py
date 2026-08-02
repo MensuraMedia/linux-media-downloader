@@ -60,6 +60,11 @@ download_thread = None
 cancel_requested = False
 window = None
 
+# Download queue — jobs waiting to run (and finished ones, for the Pending page).
+# Each job: {id, url, output_dir, download_type, playlist_mode, skip_long, limit,
+#            split_chapters, ignore_dupes, title, status, queued_at}
+download_queue = []
+
 
 # Cancellation helpers.
 # `cancel_requested` is a module-level bool. Because other modules imported it

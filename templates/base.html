@@ -37,6 +37,11 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
+                            <a href="/pending" class="sidebar-link {% if request.path == '/pending' %}active{% else %}text-white{% endif %}">
+                                Pending
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
                             <a href="/playlists" class="sidebar-link {% if request.path == '/playlists' %}active{% else %}text-white{% endif %}">
                                 Playlists
                             </a>

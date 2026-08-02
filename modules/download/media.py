@@ -4,12 +4,14 @@
 
 import os
 import threading
+import itertools
 from datetime import datetime
 import yt_dlp
 from modules.utils.file_utils import sanitize_filename
 from modules.config.settings import (
     current_download,
     download_history,
+    download_queue,
     reset_cancel,
     is_cancel_requested,
 )
@@ -530,7 +532,7 @@ def _split_into_tracks(output_dir, meta, fallback_title):
 
 def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single',
                           skip_long=False, limit=0, split_chapters=False, ignore_dupes=False):
-    """Start the download process in a separate thread"""
+    """Run a single download in a background thread (used directly by tests)."""
     download_thread = threading.Thread(
         target=download_media,
         args=(url, output_dir, download_type, playlist_mode, skip_long, limit,
@@ -539,3 +541,71 @@ def start_download_thread(url, output_dir, download_type='audio', playlist_mode=
     download_thread.daemon = True
     download_thread.start()
     return download_thread
+
+
+# ── Download queue ────────────────────────────────────────────────────────────
+# Jobs run one at a time; adding a link while one runs queues it. The Pending
+# page reads download_queue; finished jobs stay in the list (for history there).
+_job_counter = itertools.count(1)
+_queue_lock = threading.Lock()
+
+_ACTIVE_STATUSES = ('starting', 'downloading', 'processing')
+
+
+def _download_active():
+    """True if a download is currently running (by live status or an active job)."""
+    if current_download.get('status') in _ACTIVE_STATUSES:
+        return True
+    return any(j.get('status') == 'active' for j in download_queue)
+
+
+def enqueue_download(url, output_dir, download_type='audio', playlist_mode='single',
+                     skip_long=False, limit=0, split_chapters=False, ignore_dupes=False):
+    """Add a job to the queue and start it if nothing is running. Returns the job."""
+    job = {
+        'id': next(_job_counter),
+        'url': url,
+        'output_dir': output_dir,
+        'download_type': download_type,
+        'playlist_mode': playlist_mode,
+        'skip_long': skip_long,
+        'limit': limit,
+        'split_chapters': split_chapters,
+        'ignore_dupes': ignore_dupes,
+        'title': url,
+        'status': 'queued',
+        'queued_at': datetime.now().isoformat(timespec='seconds'),
+    }
+    download_queue.append(job)
+    _start_next_if_idle()
+    return job
+
+
+def _start_next_if_idle():
+    """Start the next queued job if nothing is currently downloading."""
+    with _queue_lock:
+        if _download_active():
+            return
+        nxt = next((j for j in download_queue if j.get('status') == 'queued'), None)
+        if not nxt:
+            return
+        nxt['status'] = 'active'
+    t = threading.Thread(target=_run_job, args=(nxt,), daemon=True)
+    t.start()
+
+
+def _run_job(job):
+    """Run one queued job to completion, then start the next."""
+    try:
+        current_download['job_id'] = job['id']
+        download_media(job['url'], job['output_dir'], job['download_type'],
+                       job['playlist_mode'], job['skip_long'], job['limit'],
+                       job['split_chapters'], job['ignore_dupes'])
+        job['title'] = (current_download.get('playlist_title')
+                        or current_download.get('current_file') or job['title'])
+        job['status'] = current_download.get('status', 'completed')
+    except Exception as e:
+        job['status'] = 'error'
+        job['title'] = f"{job['title']} (error: {e})"
+    finally:
+        _start_next_if_idle()
