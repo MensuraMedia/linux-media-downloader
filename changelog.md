@@ -61,3 +61,5 @@ Local, git-independent, append-only change log. ISO 8601 datetimes. Newest at th
 | 2026-08-01T18:30:00 | Docs: added packaging & distribution guide (docs/packaging.md) — Linux (pipx/AppImage/.deb/Flatpak) + Windows (PyInstaller); linked from README + DOCUMENTATION |
 | 2026-08-01T19:00:00 | Packaging: added Heroicons 'window' app icon + install-menu.sh (per-user Mint/Cinnamon menu entry); fixed AppDir .desktop, added AppRun, removed committed __pycache__ |
 | 2026-08-02T09:00:00 | Docs: added INSTALL.md (full Linux + Windows setup) and ROADMAP.md (evolving product, categorized features); reinforced 'still evolving' language; fixed DOCUMENTATION roadmap (Chapter Split implemented) |
+| 2026-08-02T10:00:00 | Feature: Ignore Duplicates — skip already-downloaded/≥80%-similar tracks via an original-title+id manifest (modules/download/dedupe.py); Home checkbox; 71 tests |
+| 2026-08-02T10:15:00 | Packaging: one-command Debian/Ubuntu/Mint installer (install.sh) at top of README — installs deps, clones, venv, program-menu entry |

@@ -5,6 +5,17 @@ content (currently YouTube) for personal, educational, or non-commercial use. It
 small **Flask** backend with a **PyWebView** native window, delegating all downloading to
 the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
 
+## ⚡ Install on Debian / Ubuntu / Linux Mint — one command
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/MensuraMedia/linux-media-downloader/main/install.sh | bash
+```
+
+Installs everything (Python, ffmpeg, the GUI backend), sets up the app, and adds it to your
+**program menu** with its own icon — then launch **"Linux Media Downloader"** like any other
+app. Re-run to update; `bash ~/.local/share/linux-media-downloader/install.sh --uninstall` to
+remove. Other platforms / manual setup: **[INSTALL.md](INSTALL.md)**.
+
 > **Repository note:** This project is maintained at
 > **[`MensuraMedia/linux-media-downloader`](https://github.com/MensuraMedia/linux-media-downloader)**.
 > It originated at `mikesdatawork/linux-media-downloader` (kept as the `upstream` remote).
@@ -57,6 +68,9 @@ the excellent [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) library.
   (thumbnails, badges, search, open/copy/re-use), on its own **Links** tab.
 - **Skip long files** — when a playlist is detected, optionally skip any track over
   7 minutes so they're never downloaded.
+- **Ignore Duplicates** — skip tracks you've already downloaded, matched by video id and by
+  original (pre-rename) title with ≥80% relevancy (so `Beach_Original_music` ≈ `Original Beach
+  Music`), using a hidden manifest built as you download.
 - **Playlists manager** — a **Playlists** tab listing every downloaded playlist (folders
   with more than one track). Rename a playlist (renames its folder), then drill in to a
   sortable table (Length / Filename / Size) with bulk operations: delete all long files

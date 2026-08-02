@@ -202,6 +202,8 @@ Key fields in `current_download`:
 | `playlist_mode` | `single` / `playlist` | `single` |
 | `skip_long` | `true` / `false` (skip tracks > 7 min) | `false` |
 | `limit` | `0` (all) or top-N for playlists (10 / 20 / 30) — maps to yt-dlp `playlistend` | `0` |
+| `split_chapters` | `true` / `false` — split a single video into per-track files | `false` |
+| `ignore_dupes` | `true` / `false` — skip already-downloaded / ≥80%-similar tracks | `false` |
 
 ---
 
@@ -246,6 +248,22 @@ The UI shows the current track's title in the active-sidebar blue with a centere
 it (determinate while downloading, animated while processing), and the overall circle folds
 in the current file's fraction so it advances smoothly. The download table's first column
 reports each track's **Length** (duration).
+
+### 7.2b Ignore Duplicates
+
+When a playlist is detected, the **Ignore Duplicates** checkbox skips tracks you already have.
+Because the app rewrites filenames, matching uses a hidden manifest of **original** titles +
+video ids (`data/download_manifest.json`), built automatically as you download
+(`modules/download/dedupe.py`, recorded in the progress hook before rename). For each
+candidate the yt-dlp `match_filter` skips it when:
+1. its **video id** matches a manifest entry (exact source identity), or
+2. its title's **normalized token set** matches, or **≥80%** similar (Sørensen–Dice on tokens
+   with a `difflib` fallback). Normalization drops filler words, stopwords, and years and
+   ignores order — so `Beach_Original_music` ≈ `Original Beach Music`. Fuzzy (non-exact)
+   matches require ≥2 tokens on each side to avoid single generic-word false positives.
+
+The count of skipped duplicates is tracked in `current_download['skipped_duplicates']`.
+See [docs/concept-ignore-duplicates.md](docs/concept-ignore-duplicates.md) for the design.
 
 ### 7.3b State retention (reconnect)
 
@@ -469,7 +487,7 @@ the ffmpeg-bundling requirement — see [docs/packaging.md](docs/packaging.md).
 | Integration test with a real download + CI | Planned |
 | **File Manager** (dense grid of app files, stats, global text ops, inline keyboard player) | Implemented — see §7.8 |
 | **Chapter / Tracklist Split** (split a long video into per-track files) | Implemented — see §7.2 (ffmpeg `-c copy`, embedded chapters or description tracklist) |
-| **Ignore Duplicates** (skip already-downloaded / ≥80%-similar tracks via an originals manifest) | Concept — see [docs/concept-ignore-duplicates.md](docs/concept-ignore-duplicates.md) |
+| **Ignore Duplicates** (skip already-downloaded / ≥80%-similar tracks via an originals manifest) | Implemented — see §7.2b |
 
 **This product is still evolving.** For the full categorized roadmap (shipped / designed /
 planned / ideas) see [ROADMAP.md](ROADMAP.md). Setup for Linux & Windows: [INSTALL.md](INSTALL.md).

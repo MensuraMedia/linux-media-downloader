@@ -26,16 +26,10 @@ Legend: ✅ shipped · 🧭 designed (concept doc) · 🛠️ planned · 💡 id
 - **Player** — audio/video player + curation (delete, add-to-folder) over all files.
 - **File Manager** — dense 3-column grid of app files, stats (duplicate names / same size),
   global text ops (one-undo), inline keyboard-controlled player, per-file delete.
-- **Desktop integration** — native window (`app.py`), Linux program-menu installer + icon;
-  packaging guide for Linux & Windows.
-
----
-
-## 🧭 Designed (concept docs — ready to build)
-
-- **Ignore Duplicates** — skip already-downloaded / ≥80%-similar tracks using a hidden
-  manifest of original (pre-rename) names + token-set relevancy scoring.
-  → [docs/concept-ignore-duplicates.md](docs/concept-ignore-duplicates.md)
+- **Ignore Duplicates** — skip already-downloaded / ≥80%-similar tracks via a hidden manifest
+  of original (pre-rename) titles + video ids.
+- **Desktop integration** — native window (`app.py`), **one-command Debian installer**
+  (`install.sh`), Linux program-menu installer + icon; packaging guide for Linux & Windows.
 
 ---
 

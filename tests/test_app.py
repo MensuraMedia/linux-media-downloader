@@ -13,6 +13,7 @@ from modules.utils.file_utils import sanitize_filename
 from modules.download.media import DownloadProgress
 from modules import playlists as pl
 from modules.download import chapters as ch
+from modules.download import dedupe as dd
 import browser_app  # provides a Flask app with both blueprints registered
 
 
@@ -571,3 +572,58 @@ def test_scan_does_not_walk_into_parent(tmp_path, monkeypatch):
     names = [p["name"] for p in pl.list_playlists()]
     assert "mix_playlist" in names
     assert "other" not in names
+
+
+# ── ignore duplicates ─────────────────────────────────────────────────────────
+
+@pytest.fixture
+def dd_isolated(tmp_path, monkeypatch):
+    monkeypatch.setattr(dd, "MANIFEST_FILE", str(tmp_path / "manifest.json"))
+    dd._manifest.clear()
+    return dd
+
+
+def test_dedupe_concept_examples(dd_isolated):
+    # "Beach_Original_music" == "Original Beach Music" (original = filler)
+    assert dd.similarity("Beach_Original_music",
+                         sorted(dd._tokens("Original Beach Music")),
+                         dd._norm_str("Original Beach Music")) == 1.0
+    # "My_Cool_video" == "This Cool Video" (my/this stop, video filler)
+    assert dd.similarity("My_Cool_video",
+                         sorted(dd._tokens("This Cool Video")),
+                         dd._norm_str("This Cool Video")) == 1.0
+
+
+def test_dedupe_distinct_titles_not_matched(dd_isolated):
+    # "Predator Theme" vs "Predator Suite" -> {predator} vs {predator,suite} = 0.67 < 0.8
+    s = dd.similarity("Predator Theme",
+                      sorted(dd._tokens("Predator Suite")),
+                      dd._norm_str("Predator Suite"))
+    assert s < 0.80
+
+
+def test_dedupe_by_video_id(dd_isolated):
+    dd.record_download({"id": "abc123", "title": "Some Song"})
+    assert dd.is_duplicate({"id": "abc123", "title": "Totally Different Name"}) is True
+    assert dd.is_duplicate({"id": "zzz999", "title": "Brand New Unique Track Here"}) is False
+
+
+def test_dedupe_by_fuzzy_name(dd_isolated):
+    dd.record_download({"id": "id1", "title": "Original Beach Music"})
+    assert dd.is_duplicate({"id": "id2", "title": "Beach_Original_music"}) is True
+
+
+def test_record_download_persists_and_dedupes(dd_isolated):
+    dd.record_download({"id": "v1", "title": "Song One"})
+    dd.record_download({"id": "v1", "title": "Song One"})   # same id -> not duplicated
+    assert len(dd._manifest) == 1
+    dd.load_manifest()                                       # reloads from disk
+    assert dd._manifest[0]["id"] == "v1"
+
+
+def test_download_accepts_ignore_dupes_param(client):
+    # Smoke: the API accepts the flag without error (no active download).
+    settings.current_download["status"] = None
+    settings.reset_cancel()
+    r = client.post("/api/download", json={"url": "", "ignore_dupes": True})
+    assert r.get_json().get("error")  # empty url still rejected -> param parsed fine

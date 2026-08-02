@@ -47,6 +47,11 @@
                                 <input class="form-check-input" type="checkbox" id="skip-long-check" disabled>
                                 <label class="form-check-label" for="skip-long-check">Skip long files (over 7 min)</label>
                             </div>
+                            <div class="form-check mt-2 opts-disabled" id="ignore-dupes-option"
+                                 title="Skip tracks you've already downloaded (matched by original name / video id)">
+                                <input class="form-check-input" type="checkbox" id="ignore-dupes-check" disabled>
+                                <label class="form-check-label" for="ignore-dupes-check">Ignore Duplicates</label>
+                            </div>
                             <div class="form-check mt-2" id="split-option"
                                  title="Detect a long multi-chapter video and split it into separate videos by its chapters / tracklist">
                                 <input class="form-check-input" type="checkbox" id="split-check">
@@ -321,11 +326,12 @@
         // Enable/gray the playlist-only options (Amount radios + Skip long).
         // They stay visible at all times; only their active state changes.
         function setPlaylistOptions(enabled) {
-            $('#scope-all, #scope-10, #scope-20, #scope-30, #skip-long-check').prop('disabled', !enabled);
-            $('#skip-long-option, #limit-option').toggleClass('opts-disabled', !enabled);
+            $('#scope-all, #scope-10, #scope-20, #scope-30, #skip-long-check, #ignore-dupes-check').prop('disabled', !enabled);
+            $('#skip-long-option, #ignore-dupes-option, #limit-option').toggleClass('opts-disabled', !enabled);
             if (!enabled) {
                 $('#scope-single').prop('checked', true);
                 $('#skip-long-check').prop('checked', false);
+                $('#ignore-dupes-check').prop('checked', false);
             }
         }
         
@@ -546,7 +552,8 @@
                     playlist_mode: playlistMode,
                     skip_long: $('#skip-long-check').is(':checked'),
                     limit: getScope().limit,
-                    split_chapters: $('#split-check').is(':checked')
+                    split_chapters: $('#split-check').is(':checked'),
+                    ignore_dupes: $('#ignore-dupes-check').is(':checked')
                 }),
             })
             .then(response => response.json())

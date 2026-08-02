@@ -158,6 +158,12 @@ class DownloadProgress:
             self.completed_files += 1
             info_dict = d.get("info_dict") or {}
             self.info = info_dict or self.info
+            # Record this download (original title + id) so future runs can dedupe.
+            try:
+                from modules.download import dedupe
+                dedupe.record_download(info_dict)
+            except Exception:
+                pass
             current_download.update({
                 'status': 'processing',
                 'completed_files': self.completed_files,
@@ -196,7 +202,7 @@ class DownloadProgress:
 
 
 def download_media(url, output_dir, download_type='audio', playlist_mode='single',
-                   skip_long=False, limit=0, split_chapters=False):
+                   skip_long=False, limit=0, split_chapters=False, ignore_dupes=False):
     """Download media from YouTube"""
     reset_cancel()
 
@@ -213,6 +219,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
     current_download['completed_files'] = 0
     current_download['message'] = 'Preparing download...'
     current_download['current_file'] = ''
+    current_download['skipped_duplicates'] = 0
     
     # Get video info to check if it's a playlist
     info = get_video_info(url)
@@ -285,14 +292,21 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
         'extractor_retries': 5,
     }
 
-    # Optional filter: skip any track longer than 7 minutes (playlists)
-    if skip_long:
-        def _skip_long_filter(info_dict, *, incomplete=False):
-            dur = info_dict.get('duration')
-            if dur is not None and dur > 420:
-                return f"Skipping long file (>7 min): {info_dict.get('title', '')}"
+    # Optional filters: skip long tracks (>7 min) and/or already-downloaded ones.
+    if skip_long or ignore_dupes:
+        from modules.download import dedupe
+
+        def _combined_filter(info_dict, *, incomplete=False):
+            if skip_long:
+                dur = info_dict.get('duration')
+                if dur is not None and dur > 420:
+                    return f"Skipping long file (>7 min): {info_dict.get('title', '')}"
+            if ignore_dupes and dedupe.is_duplicate(info_dict):
+                current_download['skipped_duplicates'] = \
+                    current_download.get('skipped_duplicates', 0) + 1
+                return f"Skipping duplicate: {info_dict.get('title', '')}"
             return None
-        ydl_opts['match_filter'] = _skip_long_filter
+        ydl_opts['match_filter'] = _combined_filter
 
     # Limit a playlist to the top N items (yt-dlp downloads items 1..N)
     if info['is_playlist'] and playlist_mode == 'playlist' and limit and limit > 0:
@@ -506,11 +520,12 @@ def _split_into_tracks(output_dir, meta, fallback_title):
 
 
 def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single',
-                          skip_long=False, limit=0, split_chapters=False):
+                          skip_long=False, limit=0, split_chapters=False, ignore_dupes=False):
     """Start the download process in a separate thread"""
     download_thread = threading.Thread(
         target=download_media,
-        args=(url, output_dir, download_type, playlist_mode, skip_long, limit, split_chapters)
+        args=(url, output_dir, download_type, playlist_mode, skip_long, limit,
+              split_chapters, ignore_dupes)
     )
     download_thread.daemon = True
     download_thread.start()
