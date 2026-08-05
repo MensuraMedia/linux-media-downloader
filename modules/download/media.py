@@ -204,8 +204,13 @@ class DownloadProgress:
 
 
 def download_media(url, output_dir, download_type='audio', playlist_mode='single',
-                   skip_long=False, limit=0, split_chapters=False, ignore_dupes=False):
-    """Download media from YouTube"""
+                   skip_long=False, limit=0, split_chapters=False, ignore_dupes=False,
+                   video_quality='1080'):
+    """Download media from YouTube.
+
+    video_quality caps the video resolution ('720' or '1080'); it is ignored for
+    audio downloads, which always fetch the best available audio.
+    """
     reset_cancel()
 
     # "Split Multi-Chapter video" is a single-video operation: split ONE long video
@@ -329,11 +334,23 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
             'keepvideo': False,  # Important: Don't keep the video file after extraction
         })
     else:  # video
-        # For video, set specific options to download video
+        # For video, download video capped at the requested resolution (720p or
+        # 1080p). The height<= filters keep every fallback within the cap; the
+        # final 'best' guards against a source with no stream at/under the cap.
+        try:
+            height = int(video_quality)
+        except (TypeError, ValueError):
+            height = 1080
+        if height not in (720, 1080):
+            height = 1080
         video_output_template = os.path.join(output_dir, '%(title)s.%(ext)s')
         ydl_opts.update({
             'outtmpl': video_output_template,
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'format': (
+                f'bestvideo[ext=mp4][height<={height}]+bestaudio[ext=m4a]/'
+                f'best[ext=mp4][height<={height}]/'
+                f'best[height<={height}]/best'
+            ),
             'merge_output_format': 'mp4',
         })
     
@@ -531,12 +548,13 @@ def _split_into_tracks(output_dir, meta, fallback_title):
 
 
 def start_download_thread(url, output_dir, download_type='audio', playlist_mode='single',
-                          skip_long=False, limit=0, split_chapters=False, ignore_dupes=False):
+                          skip_long=False, limit=0, split_chapters=False, ignore_dupes=False,
+                          video_quality='1080'):
     """Run a single download in a background thread (used directly by tests)."""
     download_thread = threading.Thread(
         target=download_media,
         args=(url, output_dir, download_type, playlist_mode, skip_long, limit,
-              split_chapters, ignore_dupes)
+              split_chapters, ignore_dupes, video_quality)
     )
     download_thread.daemon = True
     download_thread.start()
@@ -560,7 +578,8 @@ def _download_active():
 
 
 def enqueue_download(url, output_dir, download_type='audio', playlist_mode='single',
-                     skip_long=False, limit=0, split_chapters=False, ignore_dupes=False):
+                     skip_long=False, limit=0, split_chapters=False, ignore_dupes=False,
+                     video_quality='1080'):
     """Add a job to the queue and start it if nothing is running. Returns the job."""
     job = {
         'id': next(_job_counter),
@@ -572,6 +591,7 @@ def enqueue_download(url, output_dir, download_type='audio', playlist_mode='sing
         'limit': limit,
         'split_chapters': split_chapters,
         'ignore_dupes': ignore_dupes,
+        'video_quality': video_quality,
         'title': url,
         'status': 'queued',
         'queued_at': datetime.now().isoformat(timespec='seconds'),
@@ -600,7 +620,8 @@ def _run_job(job):
         current_download['job_id'] = job['id']
         download_media(job['url'], job['output_dir'], job['download_type'],
                        job['playlist_mode'], job['skip_long'], job['limit'],
-                       job['split_chapters'], job['ignore_dupes'])
+                       job['split_chapters'], job['ignore_dupes'],
+                       job.get('video_quality', '1080'))
         job['title'] = (current_download.get('playlist_title')
                         or current_download.get('current_file') or job['title'])
         job['status'] = current_download.get('status', 'completed')

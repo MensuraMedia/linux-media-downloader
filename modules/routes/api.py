@@ -42,6 +42,11 @@ def start_download():
     output_dir = data.get('output_dir', default_download_path)
     download_type = data.get('download_type', 'audio')
     playlist_mode = data.get('playlist_mode', 'single')
+    # Video resolution cap; ignored for audio (always highest quality).
+    # Whitelist to the two supported values, defaulting to 1080p.
+    video_quality = str(data.get('video_quality', '1080'))
+    if video_quality not in ('720', '1080'):
+        video_quality = '1080'
     skip_long = bool(data.get('skip_long', False))
     split_chapters = bool(data.get('split_chapters', False))
     ignore_dupes = bool(data.get('ignore_dupes', False))
@@ -60,7 +65,7 @@ def start_download():
     # Add to the queue. It starts immediately if idle, else runs after the
     # current/earlier jobs finish (one at a time).
     job = enqueue_download(url, output_dir, download_type, playlist_mode, skip_long, limit,
-                           split_chapters, ignore_dupes)
+                           split_chapters, ignore_dupes, video_quality=video_quality)
 
     if job.get('status') == 'active':
         return jsonify({'status': 'started', 'job_id': job['id']})

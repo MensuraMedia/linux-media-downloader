@@ -34,6 +34,18 @@
                                 <input class="form-check-input" type="radio" name="download-type" id="video-option" value="video">
                                 <label class="form-check-label" for="video-option">Video</label>
                             </div>
+                            <!-- Video resolution: only shown when Video is selected.
+                                 Audio always downloads the highest quality available. -->
+                            <div id="video-quality-options" class="ms-4 mt-1" style="display: none;">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="video-quality" id="quality-1080" value="1080" checked>
+                                    <label class="form-check-label" for="quality-1080">1080p</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="video-quality" id="quality-720" value="720">
+                                    <label class="form-check-label" for="quality-720">720p</label>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Column 2: Playlist -->
@@ -406,11 +418,21 @@
             });
         }
         
+        // Reveal the resolution picker only for Video; Audio is always highest quality.
+        $('input[name="download-type"]').change(function() {
+            if ($(this).val() === 'video') {
+                $('#video-quality-options').slideDown(150);
+            } else {
+                $('#video-quality-options').slideUp(150);
+            }
+        });
+
         // Start / queue a download. Adding a link while one runs queues it (see Pending).
         $('#start-download').click(function() {
             const url = $('#youtube-url').val().trim();
             let folderPath = $('#folder-path').val().trim();
             const downloadType = $('input[name="download-type"]:checked').val();
+            const videoQuality = $('input[name="video-quality"]:checked').val();
             if (!folderPath) { folderPath = default_download_path; $('#folder-path').val(folderPath); }
             if (!url) return;
             const playlistMode = getScope().mode;
@@ -424,6 +446,7 @@
                     output_dir: folderPath,
                     download_type: downloadType,
                     playlist_mode: playlistMode,
+                    video_quality: videoQuality,
                     skip_long: $('#skip-long-check').is(':checked'),
                     limit: getScope().limit,
                     split_chapters: $('#split-check').is(':checked'),
@@ -702,7 +725,7 @@
 
         // Reset form elements
         function resetForm() {
-            $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="playlist-scope"], #start-download').prop('disabled', false);
+            $('#youtube-url, #select-folder, #folder-path, input[name="download-type"], input[name="video-quality"], input[name="playlist-scope"], #start-download').prop('disabled', false);
             // Re-apply the enabled/gray state of the playlist-only options
             setPlaylistOptions(playlistDetected);
         }
