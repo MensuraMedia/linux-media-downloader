@@ -7,11 +7,14 @@ import re
 import json
 import shutil
 import hashlib
+import logging
 import subprocess
 import unicodedata
 
 from modules.config import settings
 from modules.utils.file_utils import sanitize_filename
+
+logger = logging.getLogger('lmd.playlists')
 
 # Per-playlist number colors (keyed by folder realpath), persisted to data/
 COLORS_FILE = os.path.abspath(os.path.join('data', 'playlist_colors.json'))
@@ -32,7 +35,7 @@ def save_colors(colors):
         with open(COLORS_FILE, 'w') as f:
             json.dump(colors, f, indent=2)
     except Exception as e:
-        print(f"Error saving playlist colors: {e}")
+        logger.error('Error saving playlist colors: %s', e)
 
 
 def _sanitize_color(color):
@@ -74,7 +77,7 @@ def save_seq(seq):
         with open(SEQ_FILE, 'w') as f:
             json.dump(seq, f, indent=2)
     except Exception as e:
-        print(f"Error saving playlist sequence: {e}")
+        logger.error('Error saving playlist sequence: %s', e)
 
 # Media file types we recognize as "tracks"
 MEDIA_EXTS = {

@@ -5,6 +5,9 @@
 
 import os
 import json
+import logging
+
+logger = logging.getLogger('lmd.user_settings')
 
 # Default filler words removed by the "Remove filler words" operation and used when
 # normalizing titles for duplicate detection. Users can add/remove these on the
@@ -51,7 +54,7 @@ def load_settings():
             if isinstance(saved.get('char_replacements'), list):
                 data['char_replacements'] = saved['char_replacements']
         except Exception as e:
-            print(f"Error loading app settings: {e}")
+            logger.error('Error loading app settings: %s', e)
     _settings = data
     return _settings
 
@@ -81,7 +84,7 @@ def save_settings(new_settings):
         with open(SETTINGS_FILE, 'w') as f:
             json.dump(data, f, indent=2)
     except Exception as e:
-        print(f"Error saving app settings: {e}")
+        logger.error('Error saving app settings: %s', e)
     _settings = data
     return _settings
 

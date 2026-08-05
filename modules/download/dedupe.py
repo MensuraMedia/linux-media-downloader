@@ -7,8 +7,11 @@ import os
 import re
 import json
 import difflib
+import logging
 
 from modules.config import user_settings
+
+logger = logging.getLogger('lmd.dedupe')
 
 # Words dropped during normalization (in addition to FILLER_WORDS + years)
 STOPWORDS = {
@@ -84,7 +87,7 @@ def save_manifest():
         with open(MANIFEST_FILE, 'w') as f:
             json.dump(_manifest, f, indent=2)
     except Exception as e:
-        print(f"Error saving download manifest: {e}")
+        logger.error('Error saving download manifest: %s', e)
 
 
 def record_download(info_dict, timestamp=None):

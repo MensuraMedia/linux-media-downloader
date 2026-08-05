@@ -3,6 +3,9 @@
 # Configuration settings for YT Media Backup
 
 import os
+import logging
+
+logger = logging.getLogger('lmd.settings')
 
 # App settings
 # Prefer an externally provided key; fall back to a per-run random key.
@@ -107,7 +110,7 @@ def save_download_history():
         with open(HISTORY_FILE, 'w') as f:
             json.dump(download_history, f, indent=2)
     except Exception as e:
-        print(f"Error saving download history: {e}")
+        logger.error('Error saving download history: %s', e)
 
 # Function to load history
 def load_download_history():
@@ -117,7 +120,7 @@ def load_download_history():
             with open(HISTORY_FILE, 'r') as f:
                 download_history[:] = json.load(f)
         except Exception as e:
-            print(f"Error loading download history: {e}")
+            logger.error('Error loading download history: %s', e)
             download_history[:] = []
     else:
         download_history[:] = []
@@ -144,7 +147,7 @@ def save_links_history():
         with open(LINKS_HISTORY_FILE, 'w') as f:
             json.dump(links_history, f, indent=2)
     except Exception as e:
-        print(f"Error saving links history: {e}")
+        logger.error('Error saving links history: %s', e)
 
 
 def load_links_history():
@@ -155,7 +158,7 @@ def load_links_history():
             with open(LINKS_HISTORY_FILE, 'r') as f:
                 links_history = json.load(f)
         except Exception as e:
-            print(f"Error loading links history: {e}")
+            logger.error('Error loading links history: %s', e)
             links_history = []
     else:
         links_history = []

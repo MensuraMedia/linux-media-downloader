@@ -3,7 +3,13 @@
 # Fallback version of the app for browser access
 
 import os
+import logging
 from flask import Flask
+
+# Configure logging before importing the rest so startup is captured.
+from modules.config.logging_config import setup_logging
+setup_logging()
+logger = logging.getLogger('lmd.browser')
 
 # Import modules
 from modules.routes.ui import ui_routes
@@ -36,9 +42,9 @@ if __name__ == '__main__':
     )
     
     # Show startup message
-    print("\nYT Media Backup is running in browser mode.")
-    print("Open your browser and navigate to: http://127.0.0.1:5000")
-    print("Press Ctrl+C to stop the server.\n")
-    
+    logger.info('Linux Media Downloader running in browser mode')
+    logger.info('Open your browser and navigate to: http://127.0.0.1:5000')
+    logger.info('Press Ctrl+C to stop the server.')
+
     # Run Flask app
     app.run(debug=False, host='127.0.0.1', port=5000)

@@ -5,12 +5,18 @@
 import os
 import threading
 import atexit
+import logging
 
 # WebKit2GTK's DMABUF renderer crashes on many Linux setups (VMs, some GPU
 # drivers, sandboxes), which makes the PyWebView window open and then immediately
 # close. Disabling it before WebKit initialises is the standard fix. Set this
 # only if the user hasn't already chosen a value.
 os.environ.setdefault('WEBKIT_DISABLE_DMABUF_RENDERER', '1')
+
+# Configure logging before anything else so import-time messages are captured.
+from modules.config.logging_config import setup_logging
+setup_logging()
+logger = logging.getLogger('lmd.app')
 
 import webview
 from flask import Flask
@@ -40,11 +46,13 @@ def cleanup():
 atexit.register(cleanup)
 
 def main():
+    logger.info('Starting Linux Media Downloader (desktop mode)')
     # make_server() binds and starts listening synchronously, so the port is open
     # the instant it returns — no need to sleep before opening the window.
     server = make_server('127.0.0.1', 0, app)
     port = server.server_port
     app.config['SERVER_PORT'] = port
+    logger.info('Flask server listening on http://127.0.0.1:%s', port)
 
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()

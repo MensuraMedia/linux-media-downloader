@@ -2,8 +2,11 @@
 # modules/routes/ui.py
 # UI routes for YT Media Backup
 
+import logging
 from flask import Blueprint, render_template
 from modules.config import settings
+
+logger = logging.getLogger('lmd.ui')
 
 # Create blueprint
 ui_routes = Blueprint('ui_routes', __name__)

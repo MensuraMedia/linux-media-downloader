@@ -37,3 +37,6 @@ AppDir/usr/bin/__pycache__/
 # Packaging build artifacts
 build/
 dist/
+
+# Runtime logs
+logs/

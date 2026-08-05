@@ -3,7 +3,10 @@
 # API routes for YT Media Backup
 
 import os
+import logging
 from flask import Blueprint, request, jsonify, send_file
+
+logger = logging.getLogger('lmd.api')
 from modules.config.settings import (
     current_download,
     default_download_path,

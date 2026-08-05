@@ -5,9 +5,11 @@
 import os
 import threading
 import itertools
+import logging
 from datetime import datetime
 import yt_dlp
 from modules.utils.file_utils import sanitize_filename
+from modules.config.logging_config import YTDLPLogger
 from modules.config.settings import (
     current_download,
     download_history,
@@ -16,12 +18,15 @@ from modules.config.settings import (
     is_cancel_requested,
 )
 
+logger = logging.getLogger('lmd.media')
+
 def get_video_info(url):
     """Get information about the video or playlist"""
     ydl_opts = {
         'quiet': True,
         'extract_flat': True,
         'skip_download': True,
+        'logger': YTDLPLogger(logging.getLogger('lmd.ytdlp.info')),
     }
     
     try:
@@ -280,12 +285,12 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                     try:
                         os.rename(info['filepath'], new_path)
                         info['filepath'] = new_path
-                        
+
                         # Update the filename in the info dictionary
                         if 'filename' in info:
                             info['filename'] = new_path
                     except Exception as e:
-                        print(f"Error renaming file: {e}")
+                        logger.error('Error renaming file: %s', e)
             
             return [info], None
     
@@ -297,6 +302,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
         'no_warnings': True,
         'geo_bypass': True,
         'extractor_retries': 5,
+        'logger': YTDLPLogger(logging.getLogger('lmd.ytdlp.dl')),
     }
 
     # Optional filters: skip long tracks (>7 min) and/or already-downloaded ones.
@@ -386,7 +392,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                         if not os.path.exists(sanitized_path):  # Avoid overwriting existing files
                             os.rename(filepath, sanitized_path)
                     except Exception as e:
-                        print(f"Error renaming {filename}: {e}")
+                        logger.error('Error renaming %s: %s', filename, e)
         
         # If the download didn't actually finish, try alternative method
         if not progress_tracker.done:
@@ -430,7 +436,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
                             if not os.path.exists(sanitized_path):  # Avoid overwriting existing files
                                 os.rename(filepath, sanitized_path)
                         except Exception as e:
-                            print(f"Error renaming {filename}: {e}")
+                            logger.error('Error renaming %s: %s', filename, e)
         
         # Add to download history (timestamped for reliable descending sort).
         # Record the real download outcome, not the deferred 'processing' state.
@@ -455,7 +461,7 @@ def download_media(url, output_dir, download_type='audio', playlist_mode='single
             try:
                 _split_into_tracks(output_dir, progress_tracker.info, info.get('title'))
             except Exception as e:
-                print(f"Chapter split error: {e}")
+                logger.error('Chapter split error: %s', e)
                 current_download['status'] = 'completed'
                 current_download['message'] = f'Downloaded (split failed: {e})'
 
