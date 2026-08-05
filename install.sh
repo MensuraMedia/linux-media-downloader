@@ -55,9 +55,29 @@ fi
 
 # ── 3. Python virtualenv + deps ───────────────────────────────────────────────
 say "Setting up the Python environment…"
-python3 -m venv "$INSTALL_DIR/venv"
+# --system-site-packages is REQUIRED: PyWebView's GTK backend needs PyGObject
+# (python3-gi) + WebKit2GTK, which are apt packages that cannot be pip-installed
+# into an isolated venv. Without this flag the venv can't import `gi`, pywebview
+# finds no GUI backend, and `webview.start()` raises WebViewException — the window
+# never appears (the app dies <1s after launch). See docs/troubleshooting.
+python3 -m venv --system-site-packages "$INSTALL_DIR/venv"
 "$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade pip
 "$INSTALL_DIR/venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
+
+# Sanity-check the GUI backend before we claim success, so a broken environment
+# fails loudly here instead of silently at launch time.
+if ! "$INSTALL_DIR/venv/bin/python" - <<'PY' 2>/dev/null
+import gi
+gi.require_version("Gtk", "3.0")
+try:
+    gi.require_version("WebKit2", "4.1")
+except ValueError:
+    gi.require_version("WebKit2", "4.0")
+from gi.repository import Gtk, WebKit2  # noqa: F401
+PY
+then
+    die "GTK/WebKit2 backend not importable in the venv. Ensure python3-gi, python3-gi-cairo and gir1.2-webkit2-4.1 (or 4.0) are installed, and that the venv was created with --system-site-packages."
+fi
 
 # ── 4. Program-menu entry + icon ──────────────────────────────────────────────
 say "Adding '$APP_NAME' to your program menu…"
