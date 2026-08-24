@@ -53,7 +53,7 @@ Icon=$APP_ID
 Terminal=false
 Categories=AudioVideo;Recorder;
 Keywords=youtube;download;media;music;video;backup;
-StartupWMClass=$APP_NAME
+StartupWMClass=$APP_ID
 EOF
 
 chmod +x "$DESKTOP_FILE"

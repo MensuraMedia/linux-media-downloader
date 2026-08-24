@@ -18,6 +18,23 @@ from modules.config.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger('lmd.app')
 
+# The desktop environment matches a window's WM_CLASS against the launcher's
+# StartupWMClass to attach the right icon and group windows in the taskbar.
+# Left alone, GTK derives WM_CLASS from the script name ("app.py" / "App.py"),
+# which matches nothing in linux-media-downloader.desktop, so the running window
+# shows a generic icon and cannot be pinned. Setting the program name fixes it,
+# and must happen before the GTK/WebKit backend initialises. GDK derives both
+# WM_CLASS fields from it, giving a stable
+# ("linux-media-downloader", "Linux-media-downloader") that the launcher's
+# StartupWMClass=linux-media-downloader matches on the first field.
+try:
+    from gi.repository import GLib
+    GLib.set_prgname('linux-media-downloader')
+except Exception:
+    # Non-GTK backend or gi unavailable — window identity is cosmetic, so this
+    # must never stop the app from starting.
+    logger.debug('Could not set the GTK program name', exc_info=True)
+
 import webview
 from flask import Flask
 from werkzeug.serving import make_server

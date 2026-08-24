@@ -86,7 +86,7 @@ Icon=$PKG
 Terminal=false
 Categories=AudioVideo;Recorder;
 Keywords=youtube;download;media;music;video;backup;
-StartupWMClass=Linux Media Downloader
+StartupWMClass=$PKG
 EOF
 
 echo "==> postinst (build venv, install Python deps)"
